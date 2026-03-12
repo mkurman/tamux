@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { WorkspaceId, SurfaceId, PaneId } from "./types";
+import type { ToolCall } from "./agentTools";
 import {
   readPersistedJson,
   scheduleJsonWrite,
@@ -59,6 +60,7 @@ export interface AgentMessage {
   content: string;
   provider?: string;
   model?: string;
+  toolCalls?: ToolCall[];
   toolName?: string;
   toolCallId?: string;
   toolArguments?: string;
@@ -209,7 +211,7 @@ export interface AgentState {
     threadId: string,
     content: string,
     streaming?: boolean,
-    meta?: Partial<Pick<AgentMessage, "inputTokens" | "outputTokens" | "totalTokens" | "reasoning" | "reasoningTokens" | "audioTokens" | "videoTokens" | "cost" | "tps">>
+    meta?: Partial<Pick<AgentMessage, "inputTokens" | "outputTokens" | "totalTokens" | "reasoning" | "reasoningTokens" | "audioTokens" | "videoTokens" | "cost" | "tps" | "toolCalls">>
   ) => void;
   getThreadMessages: (threadId: string) => AgentMessage[];
 
@@ -454,6 +456,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         videoTokens: meta?.videoTokens ?? last.videoTokens,
         cost: meta?.cost ?? last.cost,
         tps: meta?.tps ?? last.tps,
+        toolCalls: meta?.toolCalls ?? last.toolCalls,
       };
       const updated = [...msgs.slice(0, -1), updatedLast];
       const tokenDeltaIn = nextInputTokens - last.inputTokens;

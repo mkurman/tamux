@@ -220,6 +220,8 @@ export function AgentChatPanelProvider({ children }: { children?: React.ReactNod
         const toolCapabilities = getToolCapabilityDescription(tools);
         const systemPrompt = agentSettings.systemPrompt + toolCapabilities;
 
+        stopStreaming(currentThreadId);
+
         addMessage(currentThreadId, {
             role: "assistant",
             content: "",
@@ -231,8 +233,6 @@ export function AgentChatPanelProvider({ children }: { children?: React.ReactNod
             isCompactionSummary: false,
             isStreaming: true,
         });
-
-        stopStreaming(currentThreadId);
         const controller = new AbortController();
         abortRef.current = controller;
         setThreadAbortController(currentThreadId, controller);
@@ -314,6 +314,7 @@ export function AgentChatPanelProvider({ children }: { children?: React.ReactNod
                                 audioTokens: chunk.audioTokens,
                                 videoTokens: chunk.videoTokens,
                                 cost: chunk.cost,
+                                toolCalls: roundToolCalls,
                             });
 
                             for (const toolCall of chunk.toolCalls) {
