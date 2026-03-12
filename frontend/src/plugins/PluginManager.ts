@@ -1,4 +1,6 @@
 import type React from "react";
+import type { PluginAssistantToolDefinition, PluginAssistantToolExecutor } from "./assistantToolRegistry";
+import { registerPluginAssistantTools, unregisterPluginAssistantTools } from "./assistantToolRegistry";
 import { ComponentRegistryAPI } from "../registry/componentRegistry";
 import { CommandRegistryAPI, type CommandAction } from "../registry/commandRegistry";
 
@@ -9,6 +11,8 @@ export interface Plugin {
   components?: Record<string, React.ComponentType<any>>;
   commands?: Record<string, CommandAction>;
   views?: Record<string, unknown>;
+  assistantTools?: PluginAssistantToolDefinition[];
+  assistantToolExecutors?: Record<string, PluginAssistantToolExecutor>;
   onLoad?: () => void;
   onUnload?: () => void;
 }
@@ -34,6 +38,8 @@ export class PluginManager {
       });
     }
 
+    registerPluginAssistantTools(plugin.id, plugin.assistantTools, plugin.assistantToolExecutors);
+
     plugin.onLoad?.();
     this.plugins.set(plugin.id, plugin);
   }
@@ -45,6 +51,7 @@ export class PluginManager {
     }
 
     plugin.onUnload?.();
+    unregisterPluginAssistantTools(pluginId);
     this.plugins.delete(pluginId);
   }
 

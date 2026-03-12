@@ -1,4 +1,57 @@
+import { allLeafIds } from "../../lib/bspTree";
+import { discoverCodingAgents } from "./bridge";
 import { useCodingAgentsStore } from "./store";
+import { useWorkspaceStore } from "../../lib/workspaceStore";
+
+function resolveAgentId(agentRef: unknown) {
+    const ref = String(agentRef ?? "").trim().toLowerCase();
+    const agents = useCodingAgentsStore.getState().agents;
+    if (!ref) {
+        return useCodingAgentsStore.getState().selectedAgentId
+            ?? agents.find((agent) => agent.available)?.id
+            ?? null;
+    }
+
+    return agents.find((agent) => agent.id === ref)
+        ?.id ?? agents.find((agent) => agent.label.trim().toLowerCase() === ref)
+            ?.id ?? agents.find((agent) => agent.executables.some((entry) => entry.trim().toLowerCase() === ref))
+            ?.id ?? null;
+}
+
+function resolveWorkspaceSurfacePane(args: Record<string, unknown>) {
+    const workspaceStore = useWorkspaceStore.getState();
+    const workspaceRef = String(args.workspace ?? "").trim().toLowerCase();
+    const surfaceRef = String(args.surface ?? "").trim().toLowerCase();
+    const paneRef = String(args.pane ?? "").trim().toLowerCase();
+
+    const workspace = workspaceRef
+        ? workspaceStore.workspaces.find((entry) => entry.id.toLowerCase() === workspaceRef || entry.name.trim().toLowerCase() === workspaceRef)
+        : workspaceStore.activeWorkspace();
+    if (!workspace) {
+        return null;
+    }
+
+    const surface = surfaceRef
+        ? workspace.surfaces.find((entry) => entry.id.toLowerCase() === surfaceRef || entry.name.trim().toLowerCase() === surfaceRef)
+        : workspace.surfaces.find((entry) => entry.id === workspace.activeSurfaceId) ?? workspace.surfaces[0];
+    if (!surface) {
+        return null;
+    }
+
+    const paneIds = allLeafIds(surface.layout);
+    const paneId = paneRef
+        ? paneIds.find((entry) => entry.toLowerCase() === paneRef || (surface.paneNames[entry] ?? "").trim().toLowerCase() === paneRef)
+        : surface.activePaneId ?? paneIds[0] ?? null;
+    if (!paneId) {
+        return null;
+    }
+
+    return {
+        workspaceId: workspace.id,
+        surfaceId: surface.id,
+        paneId,
+    };
+}
 
 let registered = false;
 
@@ -11,6 +64,112 @@ export function registerCodingAgentsPlugin() {
         id: "coding-agents",
         name: "Coding Agents",
         version: "0.1.0",
+        assistantTools: [
+            {
+                type: "function",
+                function: {
+                    name: "coding_agents_list_available",
+                    description: "List locally available coding-agent CLIs discovered on PATH, including availability, version, and executable path.",
+                    parameters: {
+                        type: "object",
+                        properties: {},
+                    },
+                },
+            },
+            {
+                type: "function",
+                function: {
+                    name: "coding_agents_launch",
+                    description: "Launch a discovered coding-agent CLI in a selected terminal pane. Accepts optional workspace, surface, and pane by id or name.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            agent: {
+                                type: "string",
+                                description: "Coding agent id, label, or executable name such as claude, codex, gemini, opencode, kimi, aider, or goose.",
+                            },
+                            workspace: {
+                                type: "string",
+                                description: "Optional workspace id or name. Defaults to the active workspace.",
+                            },
+                            surface: {
+                                type: "string",
+                                description: "Optional surface id or name. Defaults to the active surface.",
+                            },
+                            pane: {
+                                type: "string",
+                                description: "Optional pane id or pane name. Defaults to the active pane on the selected surface.",
+                            },
+                        },
+                    },
+                },
+            },
+        ],
+        assistantToolExecutors: {
+            coding_agents_list_available: async (call) => {
+                const agents = await discoverCodingAgents();
+                const lines = agents.map((agent) => {
+                    const status = agent.available ? "available" : "unavailable";
+                    const details = [
+                        `${agent.label} [${agent.id}] - ${status}`,
+                        `  executable: ${agent.executable ?? agent.executables[0] ?? "unknown"}`,
+                        `  version: ${agent.version ?? "not detected"}`,
+                        `  path: ${agent.path ?? agent.error ?? "not found"}`,
+                    ];
+                    return details.join("\n");
+                });
+
+                return {
+                    toolCallId: call.id,
+                    name: call.function.name,
+                    content: lines.join("\n") || "No coding agents are registered.",
+                };
+            },
+            coding_agents_launch: async (call, args) => {
+                await useCodingAgentsStore.getState().refreshAgents();
+
+                const target = resolveWorkspaceSurfacePane(args);
+                if (!target) {
+                    return {
+                        toolCallId: call.id,
+                        name: call.function.name,
+                        content: "Error: Could not resolve the requested workspace, surface, or pane.",
+                    };
+                }
+
+                const agentId = resolveAgentId(args.agent);
+                if (!agentId) {
+                    return {
+                        toolCallId: call.id,
+                        name: call.function.name,
+                        content: "Error: Could not resolve a coding agent. Use coding_agents_list_available first.",
+                    };
+                }
+
+                const store = useCodingAgentsStore.getState();
+                store.setSelectedAgentId(agentId);
+                store.setSelectedWorkspaceId(target.workspaceId);
+                store.setSelectedSurfaceId(target.surfaceId);
+                store.setSelectedPaneId(target.paneId);
+
+                const ok = await useCodingAgentsStore.getState().launchSelectedAgent();
+                const nextState = useCodingAgentsStore.getState();
+                if (!ok) {
+                    return {
+                        toolCallId: call.id,
+                        name: call.function.name,
+                        content: `Error: ${nextState.launchError ?? "Failed to launch coding agent."}`,
+                    };
+                }
+
+                const launchedAgent = nextState.agents.find((agent) => agent.id === agentId);
+                return {
+                    toolCallId: call.id,
+                    name: call.function.name,
+                    content: `Launched ${launchedAgent?.label ?? agentId} in pane [${target.paneId}] on surface [${target.surfaceId}] in workspace [${target.workspaceId}] using command: ${nextState.lastLaunchCommand ?? "unknown"}`,
+                };
+            },
+        },
         commands: {
             refreshDiscovery: () => {
                 void useCodingAgentsStore.getState().refreshAgents();

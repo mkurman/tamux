@@ -495,7 +495,32 @@ export function messagesToApiFormat(
   messages: AgentMessage[],
 ): ApiChatMessage[] {
   return messages
-    .filter((m) => m.role === "user" || m.role === "assistant")
     .filter((m) => !m.isCompactionSummary)
-    .map((m) => ({ role: m.role, content: m.content }));
+    .filter((m) => {
+      if (m.role === "user" || m.role === "assistant") {
+        return true;
+      }
+
+      if (m.role === "tool") {
+        return Boolean(m.toolCallId) && (m.toolStatus === "done" || m.toolStatus === "error");
+      }
+
+      return false;
+    })
+    .map((m) => {
+      if (m.role === "tool") {
+        return {
+          role: "tool",
+          content: m.content,
+          tool_call_id: m.toolCallId,
+          name: m.toolName,
+        } satisfies ApiChatMessage;
+      }
+
+      return {
+        role: m.role,
+        content: m.content,
+        tool_calls: m.role === "assistant" ? m.toolCalls : undefined,
+      } satisfies ApiChatMessage;
+    });
 }
