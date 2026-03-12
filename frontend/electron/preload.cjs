@@ -1,5 +1,65 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+const loadedExternalPluginEntries = new Set();
+
+async function injectInstalledPluginScript(entry) {
+    const normalizedEntryPath = String(entry.sourceUrl || entry.entryPath || '');
+    if (loadedExternalPluginEntries.has(normalizedEntryPath)) {
+        return {
+            packageName: entry.packageName,
+            pluginName: entry.pluginName,
+            status: 'already-loaded',
+        };
+    }
+
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.dataset.amuxExternalPlugin = entry.packageName;
+    script.textContent = `${String(entry.source || '')}\n//# sourceURL=${normalizedEntryPath.replace(/\\/g, '/')}`;
+
+    try {
+        (document.head || document.documentElement).appendChild(script);
+        loadedExternalPluginEntries.add(normalizedEntryPath);
+        return {
+            packageName: entry.packageName,
+            pluginName: entry.pluginName,
+            status: 'loaded',
+        };
+    } finally {
+        script.remove();
+    }
+}
+
+async function loadInstalledPlugins() {
+    const installed = await ipcRenderer.invoke('plugin-load-installed');
+    const results = [];
+
+    for (const entry of installed) {
+        try {
+            if (entry.format !== 'script') {
+                results.push({
+                    packageName: entry.packageName,
+                    pluginName: entry.pluginName,
+                    status: 'skipped',
+                    error: `Unsupported plugin format '${entry.format}'`,
+                });
+                continue;
+            }
+
+            results.push(await injectInstalledPluginScript(entry));
+        } catch (error) {
+            results.push({
+                packageName: entry.packageName,
+                pluginName: entry.pluginName,
+                status: 'error',
+                error: error?.message || String(error),
+            });
+        }
+    }
+
+    return results;
+}
+
 contextBridge.exposeInMainWorld('amux', {
     getSocketPath: () => ipcRenderer.invoke('getSocketPath'),
     checkDaemon: () => ipcRenderer.invoke('checkDaemon'),
@@ -9,6 +69,8 @@ contextBridge.exposeInMainWorld('amux', {
     getDaemonPath: () => ipcRenderer.invoke('getDaemonPath'),
     getPlatform: () => ipcRenderer.invoke('getPlatform'),
     discoverCodingAgents: () => ipcRenderer.invoke('coding-agents-discover'),
+    listInstalledPlugins: () => ipcRenderer.invoke('plugin-list-installed'),
+    loadInstalledPlugins: () => loadInstalledPlugins(),
     checkLspHealth: () => ipcRenderer.invoke('diagnostics-check-lsp'),
     checkMcpHealth: (servers) => ipcRenderer.invoke('diagnostics-check-mcp', servers),
     getDataDir: () => ipcRenderer.invoke('persistence-get-data-dir'),

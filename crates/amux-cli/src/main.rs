@@ -1,4 +1,5 @@
 mod client;
+mod plugins;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -62,6 +63,12 @@ enum Commands {
     #[command(name = "daemon")]
     StartDaemon,
 
+    /// Install runtime extensions.
+    Install {
+        #[command(subcommand)]
+        target: InstallTarget,
+    },
+
     /// Internal JSON bridge used by the Electron frontend.
     #[command(hide = true, name = "bridge")]
     Bridge {
@@ -83,6 +90,15 @@ enum Commands {
         /// Initial terminal rows.
         #[arg(long, default_value_t = 24)]
         rows: u16,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum InstallTarget {
+    /// Install an amux plugin from npm or a local package directory.
+    Plugin {
+        /// npm package spec or local package directory.
+        package: String,
     },
 }
 
@@ -198,6 +214,19 @@ async fn main() -> Result<()> {
             cmd.spawn()?;
             println!("Daemon started.");
         }
+
+        Commands::Install { target } => match target {
+            InstallTarget::Plugin { package } => {
+                let installed = plugins::install_plugin(&package)?;
+                println!(
+                    "Installed plugin {}@{}\nentry: {}\nformat: {}",
+                    installed.package_name,
+                    installed.package_version,
+                    installed.entry_path,
+                    installed.format
+                );
+            }
+        },
 
         Commands::Bridge {
             session,

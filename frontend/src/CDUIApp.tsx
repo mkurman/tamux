@@ -45,13 +45,30 @@ const CDUIApp = () => {
   }, []);
 
   useEffect(() => {
-    registerBaseComponents();
-    registerBaseCommands();
-    registerCodingAgentsPlugin();
-  }, []);
+    let cancelled = false;
 
-  useEffect(() => {
-    void reloadViews();
+    const initializeRuntime = async () => {
+      registerBaseComponents();
+      registerBaseCommands();
+
+      try {
+        await window.amux?.loadInstalledPlugins?.();
+      } catch (pluginLoadError) {
+        console.error("Failed to load installed plugins", pluginLoadError);
+      }
+
+      registerCodingAgentsPlugin();
+
+      if (!cancelled) {
+        await reloadViews();
+      }
+    };
+
+    void initializeRuntime();
+
+    return () => {
+      cancelled = true;
+    };
   }, [reloadViews]);
 
   useEffect(() => {

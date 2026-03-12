@@ -1,15 +1,3 @@
-type AmuxBridge = {
-    getDataDir?: () => Promise<string>;
-    readJsonFile?: (relativePath: string) => Promise<unknown>;
-    writeJsonFile?: (relativePath: string, data: unknown) => Promise<boolean>;
-    readTextFile?: (relativePath: string) => Promise<string | null>;
-    writeTextFile?: (relativePath: string, content: string) => Promise<boolean>;
-    deleteDataPath?: (relativePath: string) => Promise<boolean>;
-    listDataDir?: (relativeDir?: string) => Promise<Array<{ name: string; path: string; isDirectory: boolean }>>;
-    openDataPath?: (relativePath: string) => Promise<string>;
-    revealDataPath?: (relativePath: string) => Promise<boolean>;
-};
-
 type PendingWrite = {
     relativePath: string;
     kind: "json" | "text" | "delete";
@@ -21,7 +9,7 @@ const pendingWrites = new Map<string, PendingWrite>();
 
 function getBridge(): AmuxBridge | undefined {
     if (typeof window === "undefined") return undefined;
-    return (window as Window & { amux?: AmuxBridge }).amux;
+    return window.amux;
 }
 
 function writeKey(kind: PendingWrite["kind"], relativePath: string): string {

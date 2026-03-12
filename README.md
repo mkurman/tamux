@@ -187,6 +187,15 @@ All providers use OpenAI-compatible chat completion endpoints. Switch providers 
 
 ---
 
+## Documentation
+
+- [Building CDUI Components And Views With YAML](docs/cdui-yaml-views.md)
+- [Creating Your Own amux Plugin](docs/plugin-development.md)
+
+Runtime-installed plugins are now supported through `amux install plugin <npm-package-or-local-path>`.
+
+External npm plugins must declare an `amuxPlugin` field in their `package.json` that points to a self-contained browser script entry file.
+
 ## Getting Started
 
 ### Prerequisites
@@ -276,11 +285,23 @@ This produces platform packages in `frontend/release/`:
 
 ### Plugin Development Build Notes
 
+Pinned guides:
+
+- [Building CDUI Components And Views With YAML](docs/cdui-yaml-views.md)
+- [Creating Your Own amux Plugin](docs/plugin-development.md)
+
 Frontend plugins are currently registered inside the React/Electron frontend and can contribute:
 
 - React components via the component registry
 - commands via the command registry
 - YAML views persisted under `views/plugins/`
+
+For packaged runtime plugins installed from npm or a local package directory:
+
+- install with `amux install plugin <npm-package-or-local-path>`
+- the package must declare `amuxPlugin.entry` in `package.json`
+- the entry must be a self-contained browser script that registers itself through `window.AmuxApi.registerPlugin(...)`
+- Electron preload loads installed plugin scripts from `~/.amux/plugins/registry.json` during app startup
 
 The core plugin entry points live in:
 

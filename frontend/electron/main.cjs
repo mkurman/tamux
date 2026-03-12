@@ -802,6 +802,98 @@ function listDataDir(relativeDir = '') {
     });
 }
 
+function getPluginsRootDir() {
+    const pluginsDir = path.join(ensureAmuxDataDir(), 'plugins');
+    fs.mkdirSync(pluginsDir, { recursive: true });
+    return pluginsDir;
+}
+
+function normalizeInstalledPluginRecord(entry) {
+    if (!entry || typeof entry !== 'object') {
+        return null;
+    }
+
+    const entryPath = typeof entry.entry_path === 'string' ? entry.entry_path.trim() : '';
+    if (!entryPath) {
+        return null;
+    }
+
+    return {
+        packageName: String(entry.package_name || ''),
+        packageVersion: String(entry.package_version || ''),
+        pluginName: String(entry.plugin_name || entry.package_name || ''),
+        entryPath,
+        format: String(entry.format || 'script'),
+        installedAt: Number(entry.installed_at || 0),
+    };
+}
+
+function listInstalledPlugins() {
+    const registry = readJsonFile('plugins/registry.json');
+    const plugins = Array.isArray(registry?.plugins) ? registry.plugins : [];
+    return plugins
+        .map(normalizeInstalledPluginRecord)
+        .filter(Boolean);
+}
+
+function resolveInstalledPluginEntryPath(entryPath) {
+    const pluginsRoot = path.resolve(getPluginsRootDir());
+    const resolvedPath = path.resolve(entryPath);
+
+    if (resolvedPath !== pluginsRoot && !resolvedPath.startsWith(`${pluginsRoot}${path.sep}`)) {
+        throw new Error('Installed plugin entry path escapes the amux plugins directory.');
+    }
+
+    return resolvedPath;
+}
+
+function loadInstalledPluginScripts() {
+    return listInstalledPlugins().map((entry) => {
+        try {
+            if (entry.format !== 'script') {
+                return {
+                    packageName: entry.packageName,
+                    pluginName: entry.pluginName,
+                    entryPath: entry.entryPath,
+                    format: entry.format,
+                    status: 'skipped',
+                    error: `Unsupported plugin format '${entry.format}'`,
+                };
+            }
+
+            const resolvedEntryPath = resolveInstalledPluginEntryPath(entry.entryPath);
+            if (!fs.existsSync(resolvedEntryPath) || !fs.statSync(resolvedEntryPath).isFile()) {
+                return {
+                    packageName: entry.packageName,
+                    pluginName: entry.pluginName,
+                    entryPath: entry.entryPath,
+                    format: entry.format,
+                    status: 'error',
+                    error: 'Plugin entry file does not exist.',
+                };
+            }
+
+            return {
+                packageName: entry.packageName,
+                pluginName: entry.pluginName,
+                entryPath: entry.entryPath,
+                format: entry.format,
+                sourceUrl: resolvedEntryPath.replace(/\\/g, '/'),
+                source: fs.readFileSync(resolvedEntryPath, 'utf8'),
+            };
+        } catch (error) {
+            return {
+                packageName: entry.packageName,
+                pluginName: entry.pluginName,
+                entryPath: entry.entryPath,
+                format: entry.format,
+                status: 'error',
+                error: error?.message ?? String(error),
+            };
+        }
+    });
+}
+
 function resolveFsPath(targetPath) {
     if (typeof targetPath !== 'string' || !targetPath.trim()) {
         throw new Error('A path is required.');
@@ -2002,6 +2094,8 @@ function registerIpcHandlers() {
     ipcMain.handle('getDaemonPath', () => getDaemonPath());
     ipcMain.handle('getPlatform', () => process.platform);
     ipcMain.handle('coding-agents-discover', () => discoverCodingAgents());
+    ipcMain.handle('plugin-list-installed', () => listInstalledPlugins());
+    ipcMain.handle('plugin-load-installed', () => loadInstalledPluginScripts());
     ipcMain.handle('diagnostics-check-lsp', checkLspHealth);
     ipcMain.handle('diagnostics-check-mcp', checkMcpHealth);
     ipcMain.handle('persistence-get-data-dir', () => ensureAmuxDataDir());
