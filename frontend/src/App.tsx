@@ -31,7 +31,6 @@ const SystemMonitorPanel = lazy(() => import("./components/SystemMonitorPanel").
 const FileManagerPanel = lazy(() => import("./components/FileManagerPanel").then((module) => ({ default: module.FileManagerPanel })));
 const TimeTravelSlider = lazy(() => import("./components/TimeTravelSlider").then((module) => ({ default: module.TimeTravelSlider })));
 const ExecutionCanvas = lazy(() => import("./components/ExecutionCanvas").then((module) => ({ default: module.ExecutionCanvas })));
-const WebBrowserPanel = lazy(() => import("./components/WebBrowserPanel").then((module) => ({ default: module.WebBrowserPanel })));
 
 export default function App() {
   const createWorkspace = useWorkspaceStore((s) => s.createWorkspace);
@@ -64,7 +63,6 @@ export default function App() {
   const fileManagerOpen = useWorkspaceStore((s) => s.fileManagerOpen);
   const canvasOpen = useWorkspaceStore((s) => s.canvasOpen);
   const timeTravelOpen = useWorkspaceStore((s) => s.timeTravelOpen);
-  const webBrowserOpen = useWorkspaceStore((s) => s.webBrowserOpen);
   const settings = useSettingsStore((s) => s.settings);
   const activeWorkspace = useWorkspaceStore((s) => s.activeWorkspace());
   const activeSurface = useWorkspaceStore((s) => s.activeSurface());
@@ -766,7 +764,7 @@ export default function App() {
 
         <SurfaceTabBar />
 
-        <div style={{ flex: 1, display: "flex", overflow: "hidden", gap: 0, minHeight: 0 }}>
+        <div style={{ flex: 1, display: "flex", overflow: "hidden", gap: 0, minHeight: 0, minWidth: 0 }}>
           {sidebarVisible && <Sidebar />}
 
           <div
@@ -775,6 +773,8 @@ export default function App() {
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
+              minWidth: 0,
+              minHeight: 0,
             }}
             className="amux-shell-card"
           >
@@ -787,7 +787,6 @@ export default function App() {
           </div>
 
           <Suspense fallback={null}>
-            {webBrowserOpen && <WebBrowserPanel />}
             {agentPanelOpen && <AgentChatPanel />}
             {settingsOpen && <SettingsPanel />}
             {sessionVaultOpen && <SessionVaultPanel />}

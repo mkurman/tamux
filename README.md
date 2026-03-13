@@ -285,6 +285,46 @@ This produces platform packages in `frontend/release/`:
 - **Linux:** AppImage and .deb
 - **Windows:** Portable executable and NSIS installer
 
+### Release Packaging
+
+Use the platform-specific release scripts when you want upload-ready artifacts gathered under `dist-release/`.
+
+```bash
+# Linux native release bundle (Rust binaries + frontend + Linux Electron packages)
+./scripts/build-release.sh
+
+# Native macOS release bundle (run on macOS)
+./scripts/build-release-macos.sh
+
+# Windows native release bundle (run in PowerShell or cmd.exe on Windows)
+powershell -ExecutionPolicy Bypass -File .\scripts\build-release.ps1
+scripts\build-release.bat
+
+# Windows cross-build from WSL/Linux for Rust binaries and, when supported, Electron packaging
+./scripts/build-release-wsl.sh
+```
+
+Host/platform expectations:
+
+- **Linux host:** can build Linux Rust binaries and Linux Electron artifacts.
+- **Linux/WSL host:** can also cross-compile Windows Rust binaries when `mingw-w64` is installed.
+- **macOS host:** required for signed macOS app bundles, DMGs, and notarization.
+- **Windows host:** required for the most reliable signed Windows installers.
+
+Useful options:
+
+- `--sign` enables signing in the shell scripts.
+- `--target <triple>` on `scripts/build-release.sh` cross-compiles Rust for another target triple.
+- `--skip-rust`, `--skip-frontend`, and `--skip-electron` let you resume partial builds.
+
+Signing environment variables:
+
+- `TAMUX_SIGN_CERT` / `TAMUX_SIGN_PASSWORD` for PFX-based signing.
+- `TAMUX_SIGN_THUMBPRINT` for Windows certificate store signing.
+- `TAMUX_SIGN_IDENTITY` for macOS `codesign`.
+
+Legacy `AMUX_*` signing variables are still accepted for compatibility.
+
 ### Plugin Development Build Notes
 
 Pinned guides:

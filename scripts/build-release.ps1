@@ -95,10 +95,10 @@ function Sign-Binary([string]$FilePath) {
 
     switch ($SignTool) {
         "pfx" {
-            $cert = if ($CertFile) { $CertFile } else { $env:AMUX_SIGN_CERT }
-            $pass = if ($CertPassword) { $CertPassword } else { $env:AMUX_SIGN_PASSWORD }
+            $cert = if ($CertFile) { $CertFile } else { if ($env:TAMUX_SIGN_CERT) { $env:TAMUX_SIGN_CERT } else { $env:AMUX_SIGN_CERT } }
+            $pass = if ($CertPassword) { $CertPassword } else { if ($env:TAMUX_SIGN_PASSWORD) { $env:TAMUX_SIGN_PASSWORD } else { $env:AMUX_SIGN_PASSWORD } }
             if (-not $cert) {
-                Write-Warn "No PFX certificate. Set -CertFile or AMUX_SIGN_CERT."
+                Write-Warn "No PFX certificate. Set -CertFile or TAMUX_SIGN_CERT."
                 return
             }
             Write-Host "  Signing $fileName (PFX)..."
@@ -106,9 +106,9 @@ function Sign-Binary([string]$FilePath) {
             if ($LASTEXITCODE -ne 0) { throw "signtool failed for $fileName" }
         }
         "signtool" {
-            $thumb = if ($Thumbprint) { $Thumbprint } else { $env:AMUX_SIGN_THUMBPRINT }
+            $thumb = if ($Thumbprint) { $Thumbprint } else { if ($env:TAMUX_SIGN_THUMBPRINT) { $env:TAMUX_SIGN_THUMBPRINT } else { $env:AMUX_SIGN_THUMBPRINT } }
             if (-not $thumb) {
-                Write-Warn "No certificate thumbprint. Set -Thumbprint or AMUX_SIGN_THUMBPRINT."
+                Write-Warn "No certificate thumbprint. Set -Thumbprint or TAMUX_SIGN_THUMBPRINT."
                 return
             }
             Write-Host "  Signing $fileName (cert store)..."
@@ -207,6 +207,8 @@ if ($SkipFrontend) {
 $step++
 Write-Step $step $totalSteps "Collecting artifacts..."
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
+Get-ChildItem $OutDir -Filter "tamux*" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+Get-ChildItem $OutDir -Filter "amux*" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 
 $targetDir = if ($Target) { Join-Path $ProjectRoot "target" $Target "release" } else { Join-Path $ProjectRoot "target" "release" }
 
@@ -263,22 +265,24 @@ if ($SkipElectron) {
     try {
         # Set signing env vars for electron-builder
         if ($Sign) {
-            if ($CertFile -or $env:AMUX_SIGN_CERT) {
-                $env:CSC_LINK = if ($CertFile) { $CertFile } else { $env:AMUX_SIGN_CERT }
-                $env:CSC_KEY_PASSWORD = if ($CertPassword) { $CertPassword } else { $env:AMUX_SIGN_PASSWORD }
+            if ($CertFile -or $env:TAMUX_SIGN_CERT -or $env:AMUX_SIGN_CERT) {
+                $env:CSC_LINK = if ($CertFile) { $CertFile } else { if ($env:TAMUX_SIGN_CERT) { $env:TAMUX_SIGN_CERT } else { $env:AMUX_SIGN_CERT } }
+                $env:CSC_KEY_PASSWORD = if ($CertPassword) { $CertPassword } else { if ($env:TAMUX_SIGN_PASSWORD) { $env:TAMUX_SIGN_PASSWORD } else { $env:AMUX_SIGN_PASSWORD } }
             }
-            if ($Thumbprint -or $env:AMUX_SIGN_THUMBPRINT) {
+            if ($Thumbprint -or $env:TAMUX_SIGN_THUMBPRINT -or $env:AMUX_SIGN_THUMBPRINT) {
                 # For electron-builder custom signing, we need a sign hook
-                $env:AMUX_SIGN_THUMBPRINT = if ($Thumbprint) { $Thumbprint } else { $env:AMUX_SIGN_THUMBPRINT }
+                $env:TAMUX_SIGN_THUMBPRINT = if ($Thumbprint) { $Thumbprint } elseif ($env:TAMUX_SIGN_THUMBPRINT) { $env:TAMUX_SIGN_THUMBPRINT } else { $env:AMUX_SIGN_THUMBPRINT }
             }
         }
 
+        Get-ChildItem (Join-Path $FrontendDir "release") -Filter "tamux*" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+        Get-ChildItem (Join-Path $FrontendDir "release") -Filter "amux*" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
         & npx electron-builder --win portable nsis
         if ($LASTEXITCODE -ne 0) { throw "Electron build failed" }
 
         # Copy Electron artifacts
         $releaseDir = Join-Path $FrontendDir "release"
-        Get-ChildItem $releaseDir -Filter "*.exe" -ErrorAction SilentlyContinue | ForEach-Object {
+        Get-ChildItem $releaseDir -Filter "tamux*.exe" -ErrorAction SilentlyContinue | ForEach-Object {
             Copy-Item $_.FullName $OutDir -Force
             Write-Ok "Electron: $($_.Name)"
         }

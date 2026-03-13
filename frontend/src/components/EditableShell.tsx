@@ -64,23 +64,46 @@ export function EditableShell({
         maxHeight,
     });
 
-    const parseConstraint = (value?: number | string): number | undefined => {
+    const parseConstraint = (value?: number | string, axis: "width" | "height" = "width"): number | undefined => {
         if (typeof value === "number" && Number.isFinite(value)) {
             return value;
         }
 
         if (typeof value === "string") {
-            const parsed = Number.parseFloat(value);
+            const normalized = value.trim().toLowerCase();
+
+            if (normalized.endsWith("vw")) {
+                const parsed = Number.parseFloat(normalized.slice(0, -2));
+                return Number.isFinite(parsed) ? (window.innerWidth * parsed) / 100 : undefined;
+            }
+
+            if (normalized.endsWith("vh")) {
+                const parsed = Number.parseFloat(normalized.slice(0, -2));
+                return Number.isFinite(parsed) ? (window.innerHeight * parsed) / 100 : undefined;
+            }
+
+            if (normalized.endsWith("%")) {
+                const parsed = Number.parseFloat(normalized.slice(0, -1));
+                if (!Number.isFinite(parsed)) {
+                    return undefined;
+                }
+
+                return axis === "width"
+                    ? (window.innerWidth * parsed) / 100
+                    : (window.innerHeight * parsed) / 100;
+            }
+
+            const parsed = Number.parseFloat(normalized);
             return Number.isFinite(parsed) ? parsed : undefined;
         }
 
         return undefined;
     };
 
-    const minWidthValue = parseConstraint(minWidth);
-    const minHeightValue = parseConstraint(minHeight);
-    const maxWidthValue = parseConstraint(maxWidth);
-    const maxHeightValue = parseConstraint(maxHeight);
+    const minWidthValue = parseConstraint(minWidth, "width");
+    const minHeightValue = parseConstraint(minHeight, "height");
+    const maxWidthValue = parseConstraint(maxWidth, "width");
+    const maxHeightValue = parseConstraint(maxHeight, "height");
 
     const clamp = (value: number, min?: number, max?: number): number => {
         const boundedMin = min ?? Number.NEGATIVE_INFINITY;

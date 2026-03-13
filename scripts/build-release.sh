@@ -96,6 +96,7 @@ fi
 # -----------------------------------------------------------
 step_msg "Collecting artifacts..."
 mkdir -p "$OUT_DIR"
+find "$OUT_DIR" -maxdepth 1 -type f \( -name "tamux*" -o -name "amux*" -o -name "*.asc" \) -delete 2>/dev/null || true
 
 if [[ -n "$TARGET" ]]; then
     TARGET_DIR="$PROJECT_ROOT/target/$TARGET/release"
@@ -134,12 +135,12 @@ if [[ $SIGN -eq 1 ]]; then
 
         if [[ -n "$EXE" ]] && command -v signtool &>/dev/null; then
             # Windows signing via signtool
-            if [[ -n "${AMUX_SIGN_CERT:-}" ]]; then
-                signtool sign /f "$AMUX_SIGN_CERT" /p "${AMUX_SIGN_PASSWORD:-}" \
+            if [[ -n "${TAMUX_SIGN_CERT:-${AMUX_SIGN_CERT:-}}" ]]; then
+                signtool sign /f "${TAMUX_SIGN_CERT:-${AMUX_SIGN_CERT:-}}" /p "${TAMUX_SIGN_PASSWORD:-${AMUX_SIGN_PASSWORD:-}}" \
                     /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "$file"
                 ok_msg "Signed $name (signtool/PFX)"
-            elif [[ -n "${AMUX_SIGN_THUMBPRINT:-}" ]]; then
-                signtool sign /sha1 "$AMUX_SIGN_THUMBPRINT" \
+            elif [[ -n "${TAMUX_SIGN_THUMBPRINT:-${AMUX_SIGN_THUMBPRINT:-}}" ]]; then
+                signtool sign /sha1 "${TAMUX_SIGN_THUMBPRINT:-${AMUX_SIGN_THUMBPRINT:-}}" \
                     /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "$file"
                 ok_msg "Signed $name (signtool/store)"
             else
@@ -151,7 +152,7 @@ if [[ $SIGN -eq 1 ]]; then
             ok_msg "Signed $name (GPG detached sig: ${name}.asc)"
         elif command -v codesign &>/dev/null && [[ "$OS" == "Darwin" ]]; then
             # macOS signing
-            local identity="${AMUX_SIGN_IDENTITY:-}"
+            local identity="${TAMUX_SIGN_IDENTITY:-${AMUX_SIGN_IDENTITY:-}}"
             if [[ -n "$identity" ]]; then
                 codesign --sign "$identity" --timestamp --options runtime "$file"
                 ok_msg "Signed $name (codesign)"
@@ -182,18 +183,21 @@ else
 
     if [[ $SIGN -eq 1 ]]; then
         # Pass signing certs to electron-builder
-        export CSC_LINK="${AMUX_SIGN_CERT:-}"
-        export CSC_KEY_PASSWORD="${AMUX_SIGN_PASSWORD:-}"
+        export CSC_LINK="${TAMUX_SIGN_CERT:-${AMUX_SIGN_CERT:-}}"
+        export CSC_KEY_PASSWORD="${TAMUX_SIGN_PASSWORD:-${AMUX_SIGN_PASSWORD:-}}"
     fi
 
     case "$OS" in
         Linux*)
+            find "$PROJECT_ROOT/frontend/release" -maxdepth 1 -type f \( -name "tamux*" -o -name "amux*" \) -delete 2>/dev/null || true
             npx electron-builder --linux AppImage deb || warn_msg "Electron Linux build failed (non-fatal)"
             ;;
         Darwin*)
+            find "$PROJECT_ROOT/frontend/release" -maxdepth 1 -type f \( -name "tamux*" -o -name "amux*" \) -delete 2>/dev/null || true
             npx electron-builder --mac dmg || warn_msg "Electron macOS build failed (non-fatal)"
             ;;
         *)
+            find "$PROJECT_ROOT/frontend/release" -maxdepth 1 -type f \( -name "tamux*" -o -name "amux*" \) -delete 2>/dev/null || true
             npx electron-builder --win portable nsis || warn_msg "Electron Windows build failed (non-fatal)"
             ;;
     esac
@@ -201,7 +205,7 @@ else
     # Collect Electron artifacts
     RELEASE_DIR="$PROJECT_ROOT/frontend/release"
     if [[ -d "$RELEASE_DIR" ]]; then
-        find "$RELEASE_DIR" -maxdepth 1 -type f \( -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" -o -name "*.rpm" \) 2>/dev/null | while read -r f; do
+        find "$RELEASE_DIR" -maxdepth 1 -type f \( -name "tamux*.exe" -o -name "tamux*.AppImage" -o -name "tamux*.deb" -o -name "tamux*.dmg" -o -name "tamux*.rpm" -o -name "tamux*.zip" \) 2>/dev/null | while read -r f; do
             cp "$f" "$OUT_DIR/"
             ok_msg "Electron: $(basename "$f")"
         done

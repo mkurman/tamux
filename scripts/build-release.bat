@@ -6,7 +6,7 @@ REM Prerequisites:
 REM   - Rust toolchain (rustup)
 REM   - Node.js + npm
 REM   - (Optional) signtool.exe in PATH for code signing
-REM   - (Optional) Set AMUX_SIGN_CERT and AMUX_SIGN_PASSWORD for signing
+REM   - (Optional) Set TAMUX_SIGN_CERT and TAMUX_SIGN_PASSWORD for signing
 REM
 REM Usage:
 REM   scripts\build-release.bat              Build without signing
@@ -22,7 +22,7 @@ set OUT_DIR=%PROJECT_ROOT%\dist-release
 
 echo.
 echo ============================================================
-echo  amux release build
+echo  tamux release build
 echo ============================================================
 echo.
 
@@ -56,6 +56,8 @@ REM Step 3: Collect binaries
 REM -----------------------------------------------------------
 echo [3/5] Collecting artifacts...
 if not exist "%OUT_DIR%" mkdir "%OUT_DIR%"
+del /Q "%OUT_DIR%\tamux*" >nul 2>nul
+del /Q "%OUT_DIR%\amux*" >nul 2>nul
 
 copy /Y "%PROJECT_ROOT%\target\release\tamux-daemon.exe" "%OUT_DIR%\" >nul
 copy /Y "%PROJECT_ROOT%\target\release\tamux.exe"        "%OUT_DIR%\" >nul
@@ -86,14 +88,24 @@ REM Step 5: Build Electron installer (portable + NSIS)
 REM -----------------------------------------------------------
 echo [5/5] Building Electron app...
 cd /d "%PROJECT_ROOT%\frontend"
+del /Q "%PROJECT_ROOT%\frontend\release\tamux*" >nul 2>nul
+del /Q "%PROJECT_ROOT%\frontend\release\amux*" >nul 2>nul
 
 if %SIGN%==1 (
     REM electron-builder reads CSC_LINK and CSC_KEY_PASSWORD for signing
-    if defined AMUX_SIGN_CERT (
+    if defined TAMUX_SIGN_CERT (
+        set CSC_LINK=%TAMUX_SIGN_CERT%
+    ) else (
+        if defined AMUX_SIGN_CERT (
         set CSC_LINK=%AMUX_SIGN_CERT%
+        )
     )
-    if defined AMUX_SIGN_PASSWORD (
+    if defined TAMUX_SIGN_PASSWORD (
+        set CSC_KEY_PASSWORD=%TAMUX_SIGN_PASSWORD%
+    ) else (
+        if defined AMUX_SIGN_PASSWORD (
         set CSC_KEY_PASSWORD=%AMUX_SIGN_PASSWORD%
+        )
     )
 )
 
@@ -156,15 +168,30 @@ if errorlevel 1 (
     goto :eof
 )
 
-if defined AMUX_SIGN_CERT (
+if defined TAMUX_SIGN_CERT (
     REM PFX file signing
-    signtool sign /f "%AMUX_SIGN_CERT%" /p "%AMUX_SIGN_PASSWORD%" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "%FILE%"
-) else if defined AMUX_SIGN_THUMBPRINT (
-    REM Certificate store signing (hardware token / cert store)
-    signtool sign /sha1 "%AMUX_SIGN_THUMBPRINT%" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "%FILE%"
-) else (
-    echo       WARNING: No signing certificate configured.
-    echo       Set AMUX_SIGN_CERT + AMUX_SIGN_PASSWORD (PFX file)
-    echo       or AMUX_SIGN_THUMBPRINT (certificate store).
+    signtool sign /f "%TAMUX_SIGN_CERT%" /p "%TAMUX_SIGN_PASSWORD%" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "%FILE%"
+    goto :eof
 )
-goto :eof
+
+if defined AMUX_SIGN_CERT (
+    REM Legacy PFX file signing
+    signtool sign /f "%AMUX_SIGN_CERT%" /p "%AMUX_SIGN_PASSWORD%" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "%FILE%"
+    goto :eof
+)
+
+if defined TAMUX_SIGN_THUMBPRINT (
+    REM Certificate store signing (hardware token / cert store)
+    signtool sign /sha1 "%TAMUX_SIGN_THUMBPRINT%" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "%FILE%"
+    goto :eof
+)
+
+if defined AMUX_SIGN_THUMBPRINT (
+    REM Legacy certificate store signing (hardware token / cert store)
+    signtool sign /sha1 "%AMUX_SIGN_THUMBPRINT%" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "%FILE%"
+    goto :eof
+)
+
+echo       WARNING: No signing certificate configured.
+echo       Set TAMUX_SIGN_CERT + TAMUX_SIGN_PASSWORD (PFX file)
+echo       or TAMUX_SIGN_THUMBPRINT (certificate store).

@@ -2,6 +2,12 @@
   "name": "tamux",
   "private": true,
   "version": "0.1.1",
+  "description": "Agentic terminal multiplexer with AI-native workflows",
+  "homepage": "https://tamux.app",
+  "author": {
+    "name": "tamux contributors",
+    "email": "noreply@tamux.app"
+  },
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -9,6 +15,9 @@
     "dev:electron": "vite build && electron .",
     "build": "tsc -b && vite build",
     "build:electron": "tsc -b && vite build && electron-builder --win --linux",
+    "build:electron:linux": "tsc -b && vite build && electron-builder --linux AppImage deb",
+    "build:electron:windows": "tsc -b && vite build && electron-builder --win portable nsis",
+    "build:electron:macos": "tsc -b && vite build && electron-builder --mac dmg zip",
     "preview": "vite preview",
     "lint": "eslint ."
   },
@@ -74,6 +83,7 @@
         "AppImage",
         "deb"
       ],
+      "icon": "assets/icon.png",
       "extraResources": [
         {
           "from": "dist/tamux-daemon",
@@ -83,8 +93,7 @@
           "from": "dist/tamux",
           "to": "bin/tamux"
         }
-      ],
-      "icon": "assets/icon.ico"
+      ]
     },
     "portable": {
       "artifactName": "tamux-portable.exe"

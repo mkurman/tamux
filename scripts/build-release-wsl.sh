@@ -10,9 +10,9 @@
 #   ./scripts/build-release-wsl.sh --sign       Build and sign all binaries
 #
 # Signing options (env vars):
-#   AMUX_SIGN_CERT       Path to PFX certificate file
-#   AMUX_SIGN_PASSWORD   PFX certificate password
-#   AMUX_SIGN_THUMBPRINT Certificate thumbprint (alternative to PFX)
+#   TAMUX_SIGN_CERT       Path to PFX certificate file
+#   TAMUX_SIGN_PASSWORD   PFX certificate password
+#   TAMUX_SIGN_THUMBPRINT Certificate thumbprint (alternative to PFX)
 #
 # Prerequisites:
 #   - WSL2 with Rust toolchain
@@ -79,6 +79,7 @@ echo "  Done."
 echo ""
 echo "[3/5] Collecting artifacts..."
 mkdir -p "$OUT_DIR"
+find "$OUT_DIR" -maxdepth 1 -type f \( -name "tamux*" -o -name "amux*" \) -delete 2>/dev/null || true
 
 TARGET_DIR="$PROJECT_ROOT/target/$TARGET/release"
 
@@ -125,18 +126,18 @@ if [[ $SIGN -eq 1 ]]; then
             return
         fi
 
-        if [[ -n "${AMUX_SIGN_CERT:-}" ]]; then
-            "$SIGNTOOL" sign /f "$AMUX_SIGN_CERT" /p "${AMUX_SIGN_PASSWORD:-}" \
+        if [[ -n "${TAMUX_SIGN_CERT:-${AMUX_SIGN_CERT:-}}" ]]; then
+            "$SIGNTOOL" sign /f "${TAMUX_SIGN_CERT:-${AMUX_SIGN_CERT:-}}" /p "${TAMUX_SIGN_PASSWORD:-${AMUX_SIGN_PASSWORD:-}}" \
                 /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "$file"
             echo "  Signed $name (PFX)"
-        elif [[ -n "${AMUX_SIGN_THUMBPRINT:-}" ]]; then
-            "$SIGNTOOL" sign /sha1 "$AMUX_SIGN_THUMBPRINT" \
+        elif [[ -n "${TAMUX_SIGN_THUMBPRINT:-${AMUX_SIGN_THUMBPRINT:-}}" ]]; then
+            "$SIGNTOOL" sign /sha1 "${TAMUX_SIGN_THUMBPRINT:-${AMUX_SIGN_THUMBPRINT:-}}" \
                 /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "$file"
             echo "  Signed $name (cert store)"
         else
             echo "  WARNING: No signing cert configured for $name."
-            echo "           Set AMUX_SIGN_CERT + AMUX_SIGN_PASSWORD"
-            echo "           or AMUX_SIGN_THUMBPRINT."
+            echo "           Set TAMUX_SIGN_CERT + TAMUX_SIGN_PASSWORD"
+            echo "           or TAMUX_SIGN_THUMBPRINT."
         fi
     }
 
@@ -154,10 +155,11 @@ fi
 echo ""
 echo "[5/5] Building Electron app..."
 cd "$PROJECT_ROOT/frontend"
+find "$PROJECT_ROOT/frontend/release" -maxdepth 1 -type f \( -name "tamux*" -o -name "amux*" \) -delete 2>/dev/null || true
 
-if [[ $SIGN -eq 1 && -n "${AMUX_SIGN_CERT:-}" ]]; then
-    export CSC_LINK="$AMUX_SIGN_CERT"
-    export CSC_KEY_PASSWORD="${AMUX_SIGN_PASSWORD:-}"
+if [[ $SIGN -eq 1 && -n "${TAMUX_SIGN_CERT:-${AMUX_SIGN_CERT:-}}" ]]; then
+    export CSC_LINK="${TAMUX_SIGN_CERT:-${AMUX_SIGN_CERT:-}}"
+    export CSC_KEY_PASSWORD="${TAMUX_SIGN_PASSWORD:-${AMUX_SIGN_PASSWORD:-}}"
 fi
 
 npx electron-builder --win portable nsis
@@ -165,7 +167,7 @@ npx electron-builder --win portable nsis
 # Collect Electron artifacts
 RELEASE_DIR="$PROJECT_ROOT/frontend/release"
 if [[ -d "$RELEASE_DIR" ]]; then
-    for f in "$RELEASE_DIR"/*.exe; do
+    for f in "$RELEASE_DIR"/tamux*.exe; do
         [[ -f "$f" ]] || continue
         cp "$f" "$OUT_DIR/"
         echo "  Collected $(basename "$f")"

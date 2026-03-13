@@ -5,7 +5,31 @@ import { getBrowserContainerStyle, type WebBrowserPanelProps } from "./web-brows
 import { useWebBrowserController } from "./web-browser-panel/useWebBrowserController";
 import { WebviewFrame } from "./web-browser-panel/WebviewFrame";
 
-export function WebBrowserPanel({ style, className }: WebBrowserPanelProps = {}) {
+const DEFAULT_BROWSER_PANEL_WIDTH = 620;
+const MIN_BROWSER_PANEL_WIDTH = 420;
+const MAX_BROWSER_PANEL_WIDTH = 1200;
+const RESIZE_HANDLE_WIDTH = 10;
+
+function clampBrowserWidth(width: number, viewportWidth: number): number {
+    const viewportMaxWidth = Math.floor(viewportWidth * 0.8);
+    const maxWidth = Math.max(MIN_BROWSER_PANEL_WIDTH, Math.min(MAX_BROWSER_PANEL_WIDTH, viewportMaxWidth));
+    return Math.min(Math.max(width, MIN_BROWSER_PANEL_WIDTH), maxWidth);
+}
+
+function parseWidthValue(value: unknown): number | null {
+    if (typeof value === "number" && Number.isFinite(value)) {
+        return value;
+    }
+
+    if (typeof value === "string") {
+        const parsed = Number.parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    return null;
+}
+
+export function WebBrowserPanel({ style, className, enableInternalResize = false }: WebBrowserPanelProps = {}) {
     const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
     const webBrowserOpen = useWorkspaceStore((s) => s.webBrowserOpen);
     const webBrowserUrl = useWorkspaceStore((s) => s.webBrowserUrl);
@@ -19,13 +43,22 @@ export function WebBrowserPanel({ style, className }: WebBrowserPanelProps = {})
     const toggleWebBrowserFullscreen = useWorkspaceStore((s) => s.toggleWebBrowserFullscreen);
 
     const webviewRef = useRef<any>(null);
+    const panelRef = useRef<HTMLDivElement | null>(null);
     const [address, setAddress] = useState(webBrowserUrl);
     const [pageTitle, setPageTitle] = useState("Browser");
     const [isDomReady, setIsDomReady] = useState(false);
+    const [panelWidth, setPanelWidth] = useState(() => parseWidthValue(style?.width) ?? DEFAULT_BROWSER_PANEL_WIDTH);
 
     useEffect(() => {
         setAddress(webBrowserUrl);
     }, [webBrowserUrl]);
+
+    useEffect(() => {
+        const configuredWidth = parseWidthValue(style?.width);
+        if (configuredWidth !== null) {
+            setPanelWidth(configuredWidth);
+        }
+    }, [style?.width]);
 
     useEffect(() => {
         const webview = webviewRef.current;
@@ -101,10 +134,83 @@ export function WebBrowserPanel({ style, className }: WebBrowserPanelProps = {})
         return getBrowserContainerStyle(webBrowserFullscreen);
     }, [webBrowserFullscreen]);
 
+    const handleResizeStart = (event: React.PointerEvent<HTMLDivElement>) => {
+        if (!enableInternalResize || webBrowserFullscreen || !panelRef.current) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const pointerId = event.pointerId;
+        const target = event.currentTarget;
+        const rect = panelRef.current.getBoundingClientRect();
+        let lastClientX = event.clientX;
+
+        setPanelWidth(clampBrowserWidth(rect.width, window.innerWidth));
+
+        target.setPointerCapture(pointerId);
+        document.body.style.userSelect = "none";
+        document.body.style.cursor = "col-resize";
+
+        const onPointerMove = (moveEvent: PointerEvent) => {
+            const widthDelta = lastClientX - moveEvent.clientX;
+            lastClientX = moveEvent.clientX;
+
+            setPanelWidth((currentWidth) => clampBrowserWidth((currentWidth || rect.width) + widthDelta, window.innerWidth));
+        };
+
+        const onPointerEnd = () => {
+            if (target.hasPointerCapture(pointerId)) {
+                target.releasePointerCapture(pointerId);
+            }
+            document.body.style.userSelect = "";
+            document.body.style.cursor = "";
+            window.removeEventListener("pointermove", onPointerMove);
+            window.removeEventListener("pointerup", onPointerEnd);
+            window.removeEventListener("pointercancel", onPointerEnd);
+        };
+
+        window.addEventListener("pointermove", onPointerMove);
+        window.addEventListener("pointerup", onPointerEnd);
+        window.addEventListener("pointercancel", onPointerEnd);
+    };
+
     if (!webBrowserOpen) return null;
 
     return (
-        <div style={{ ...containerStyle, ...(style ?? {}) }} className={className}>
+        <div
+            ref={panelRef}
+            style={{
+                ...containerStyle,
+                ...(style ?? {}),
+                ...(enableInternalResize && !webBrowserFullscreen
+                    ? {
+                        width: panelWidth,
+                        flexBasis: `${panelWidth}px`,
+                        flexGrow: 0,
+                        flexShrink: 0,
+                    }
+                    : {}),
+            }}
+            className={className}
+        >
+            {enableInternalResize && !webBrowserFullscreen ? (
+                <div
+                    onPointerDown={handleResizeStart}
+                    style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: RESIZE_HANDLE_WIDTH,
+                        height: "100%",
+                        cursor: "col-resize",
+                        zIndex: 30,
+                        background: "linear-gradient(90deg, rgba(148, 163, 184, 0.28), rgba(148, 163, 184, 0.5), transparent)",
+                    }}
+                />
+            ) : null}
+
             <BrowserChrome
                 address={address}
                 setAddress={setAddress}

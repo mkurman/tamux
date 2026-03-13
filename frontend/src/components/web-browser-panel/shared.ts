@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 export type WebBrowserPanelProps = {
     style?: CSSProperties;
     className?: string;
+    enableInternalResize?: boolean;
 };
 
 export function getBrowserContainerStyle(webBrowserFullscreen: boolean): CSSProperties {
@@ -15,20 +16,25 @@ export function getBrowserContainerStyle(webBrowserFullscreen: boolean): CSSProp
             borderLeft: "1px solid var(--border)",
             display: "flex",
             flexDirection: "column",
+            minWidth: 0,
+            minHeight: 0,
+            overflow: "hidden",
         };
     }
 
     return {
-        width: 620,
-        minWidth: 360,
+        minWidth: 420,
         maxWidth: 1200,
         height: "100%",
+        alignSelf: "stretch",
         display: "flex",
         flexDirection: "column",
+        flexShrink: 0,
+        minHeight: 0,
+        position: "relative",
         background: "var(--bg-primary)",
         border: "1px solid var(--border)",
         borderRadius: "var(--radius-xl)",
-        resize: "horizontal",
         overflow: "hidden",
     };
 }

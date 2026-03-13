@@ -9,10 +9,25 @@ blocks:
       editable: true
     defaults:
       visible: true
+      resizable: true
+      resizeAxis: "horizontal"
+      minWidth: 420
+      maxWidth: "80vw"
+      height: "100%"
       style:
+        maxWidth: 1200
+        display: "flex"
+        flexDirection: "column"
         position: "relative"
-        width: "48vw"
+        flexShrink: 0
+        height: "100%"
+        minHeight: 0
+        minWidth: 420
+        overflow: "hidden"
         zIndex: 2900
+        wrapperStyle:
+          title: "Web Browser"
+          height: "100%"
     layout:
       id: "blocks/browserPanelShell/layout"
       use: "amux-primitive-box"
@@ -32,5 +47,9 @@ layout:
         resizeAxis: "horizontal"
         minWidth: 420
         maxWidth: "80vw"
+        height: "100%"
+        wrapperStyle:
+          title: "Web Browser"
+          height: "100%"
       builder:
         editable: true
