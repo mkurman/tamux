@@ -130,7 +130,7 @@ Key design principles:
                |  | PTY Bus  |  | Lane     |  | AST |   |
                |  | Manager  |  | Queue    |  | Val |   |
                |  +----------+  +----------+  +-----+   |
-               |  +----------+  +----------+  +---=--+  |
+               |  +----------+  +----------+  +------+  |
                |  | Snapshot |  | Policy   |  | Cred |  |
                |  | Engine   |  | Engine   |  | Scrub|  |
                |  +----------+  +----------+  +------+  |
