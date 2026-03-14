@@ -903,7 +903,12 @@ export function TerminalPane({ paneId, sessionId }: TerminalPaneProps) {
 
           if (event.type === "output") {
             const decodedBytes = decodeBase64ToBytes(event.data);
-            const decodedText = decodeBase64ToText(event.data);
+            let decodedText = "";
+            try {
+              decodedText = new TextDecoder().decode(decodedBytes);
+            } catch {
+              decodedText = "";
+            }
             term.write(decodedBytes);
             recordCognitiveOutput({
               paneId,
