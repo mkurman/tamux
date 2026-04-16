@@ -33,7 +33,8 @@ After a quick-install or direct-binary install, `tamux upgrade` reuses the direc
 ```bash
 npm install -g tamux
 tamux --help
-
+```
+```bash
 # or install locally in a project:
 npm install tamux
 npx tamux --help
