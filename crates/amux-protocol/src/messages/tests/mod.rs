@@ -755,6 +755,55 @@ fn daemon_message_roundtrips_openai_codex_auth_logout_result() {
 }
 
 #[test]
+fn client_message_roundtrips_login_provider_with_auth_source() {
+    let msg = ClientMessage::AgentLoginProvider {
+        provider_id: "github-copilot".to_string(),
+        api_key: String::new(),
+        base_url: "https://api.githubcopilot.com".to_string(),
+        auth_source: Some("github_copilot".to_string()),
+    };
+    let bytes = bincode::serialize(&msg).unwrap();
+    let decoded: ClientMessage = bincode::deserialize(&bytes).unwrap();
+    match decoded {
+        ClientMessage::AgentLoginProvider {
+            provider_id,
+            api_key,
+            base_url,
+            auth_source,
+        } => {
+            assert_eq!(provider_id, "github-copilot");
+            assert!(api_key.is_empty());
+            assert_eq!(base_url, "https://api.githubcopilot.com");
+            assert_eq!(auth_source.as_deref(), Some("github_copilot"));
+        }
+        other => panic!("unexpected variant: {:?}", other),
+    }
+}
+
+#[test]
+fn daemon_message_roundtrips_provider_login_result() {
+    let msg = DaemonMessage::AgentProviderLoginResult {
+        provider_id: "github-copilot".to_string(),
+        success: true,
+        message: Some("Started GitHub Copilot browser login".to_string()),
+    };
+    let bytes = bincode::serialize(&msg).unwrap();
+    let decoded: DaemonMessage = bincode::deserialize(&bytes).unwrap();
+    match decoded {
+        DaemonMessage::AgentProviderLoginResult {
+            provider_id,
+            success,
+            message,
+        } => {
+            assert_eq!(provider_id, "github-copilot");
+            assert!(success);
+            assert_eq!(message.as_deref(), Some("Started GitHub Copilot browser login"));
+        }
+        other => panic!("unexpected variant: {:?}", other),
+    }
+}
+
+#[test]
 fn daemon_message_roundtrips_plugin_api_call_result_with_operation_id() {
     let msg = DaemonMessage::PluginApiCallResult {
         operation_id: Some("op-plugin-1".to_string()),

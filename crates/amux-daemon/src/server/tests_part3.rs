@@ -1011,6 +1011,76 @@ async fn openai_codex_auth_logout_during_pending_clears_pending_state() {
 }
 
 #[tokio::test]
+async fn github_copilot_login_provider_with_browser_auth_returns_login_result() {
+    let _lock = crate::agent::provider_auth_test_env_lock();
+    let db_root = tempfile::tempdir().expect("temp dir");
+    let script_path = db_root.path().join("gh-mock.sh");
+    std::fs::write(
+        &script_path,
+        "#!/bin/sh\nif [ \"$1\" = \"auth\" ] && [ \"$2\" = \"login\" ]; then\n  exit 0\nfi\nif [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  printf 'ghu_test_token\\n'\n  exit 0\nfi\nexit 1\n",
+    )
+    .expect("write gh mock");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&script_path)
+            .expect("script metadata")
+            .permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&script_path, perms).expect("chmod gh mock");
+    }
+
+    std::env::set_var("TAMUX_PROVIDER_AUTH_DB_PATH", db_root.path().join("provider-auth.db"));
+    std::env::set_var("PATH", format!("{}:{}", db_root.path().display(), std::env::var("PATH").unwrap_or_default()));
+    std::fs::copy(&script_path, db_root.path().join("gh")).expect("install gh mock");
+
+    let mut conn = spawn_test_connection().await;
+
+    conn.framed
+        .send(ClientMessage::AgentLoginProvider {
+            provider_id: "github-copilot".to_string(),
+            api_key: String::new(),
+            base_url: "https://api.githubcopilot.com".to_string(),
+            auth_source: Some("github_copilot".to_string()),
+        })
+        .await
+        .expect("send copilot login request");
+
+    match conn.recv().await {
+        DaemonMessage::AgentProviderLoginResult {
+            provider_id,
+            success,
+            message,
+        } => {
+            assert_eq!(provider_id, "github-copilot");
+            assert!(success);
+            assert_eq!(message.as_deref(), Some("Started GitHub Copilot browser login"));
+        }
+        other => panic!("expected AgentProviderLoginResult, got {other:?}"),
+    }
+
+    match conn.recv().await {
+        DaemonMessage::AgentProviderAuthStates { states_json } => {
+            let states: serde_json::Value = serde_json::from_str(&states_json).expect("states json");
+            let copilot = states
+                .as_array()
+                .and_then(|items| {
+                    items.iter().find(|item| {
+                        item.get("provider_id").and_then(|v| v.as_str())
+                            == Some("github-copilot")
+                    })
+                })
+                .expect("copilot state present");
+            assert_eq!(copilot.get("authenticated").and_then(|v| v.as_bool()), Some(true));
+        }
+        other => panic!("expected AgentProviderAuthStates, got {other:?}"),
+    }
+
+    conn.shutdown().await;
+    std::env::remove_var("TAMUX_PROVIDER_AUTH_DB_PATH");
+}
+
+#[tokio::test]
 async fn openai_codex_auth_login_after_error_returns_fresh_pending_payload() {
     let _lock = crate::agent::provider_auth_test_env_lock();
     let (_temp_dir, _env_guard) = setup_server_openai_codex_auth_test();

@@ -295,12 +295,14 @@ where
             provider_id,
             api_key,
             base_url,
+            auth_source,
         } => {
             framed
                 .send(ClientMessage::AgentLoginProvider {
                     provider_id,
                     api_key,
                     base_url,
+                    auth_source,
                 })
                 .await?;
         }

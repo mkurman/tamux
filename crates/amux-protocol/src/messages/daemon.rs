@@ -102,6 +102,7 @@ pub enum DaemonMessage {
     AgentGeneratedToolResult { #[serde(default)] operation_id: Option<String>, #[serde(default)] tool_name: Option<String>, result_json: String },
     AgentProviderValidation { #[serde(default)] operation_id: Option<String>, provider_id: String, valid: bool, #[serde(default)] error: Option<String>, #[serde(default)] models_json: Option<String> },
     AgentProviderAuthStates { states_json: String },
+    AgentProviderLoginResult { provider_id: String, success: bool, #[serde(default)] message: Option<String> },
     AgentSubAgentList { sub_agents_json: String },
     AgentSubAgentUpdated { sub_agent_json: String },
     AgentSubAgentRemoved { sub_agent_id: String },

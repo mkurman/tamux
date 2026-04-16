@@ -83,6 +83,46 @@ pub(super) fn parse_provider_validation_terminal_response(
     }
 }
 
+pub(super) fn parse_provider_login_terminal_response(
+    msg: DaemonMessage,
+) -> Option<Result<(bool, Option<String>)>> {
+    match msg {
+        DaemonMessage::AgentProviderLoginResult {
+            success, message, ..
+        } => Some(Ok((success, message))),
+        DaemonMessage::Error { message } | DaemonMessage::AgentError { message } => {
+            Some(Err(anyhow::anyhow!(message)))
+        }
+        _ => None,
+    }
+}
+
+pub(super) async fn login_provider_on_stream(
+    framed: &mut Framed<impl tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin, AmuxCodec>,
+    provider_id: &str,
+    api_key: &str,
+    base_url: &str,
+    auth_source: Option<&str>,
+) -> Result<(bool, Option<String>)> {
+    wizard_send(
+        framed,
+        ClientMessage::AgentLoginProvider {
+            provider_id: provider_id.to_string(),
+            api_key: api_key.to_string(),
+            base_url: base_url.to_string(),
+            auth_source: auth_source.map(str::to_string),
+        },
+    )
+    .await?;
+
+    loop {
+        let msg = wizard_recv(framed).await?;
+        if let Some(result) = parse_provider_login_terminal_response(msg) {
+            return result;
+        }
+    }
+}
+
 pub(super) async fn validate_provider_on_stream(
     framed: &mut Framed<impl tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin, AmuxCodec>,
     provider_id: &str,

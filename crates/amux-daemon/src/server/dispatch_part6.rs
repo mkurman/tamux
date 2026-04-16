@@ -634,7 +634,51 @@ if matches!(
                     provider_id,
                     api_key,
                     base_url,
+                    auth_source,
                 } => {
+                    if provider_id == amux_shared::providers::PROVIDER_ID_GITHUB_COPILOT
+                        && matches!(auth_source.as_deref(), Some("github_copilot"))
+                    {
+                        match crate::agent::copilot_auth::begin_github_copilot_auth_flow() {
+                            Ok(result) => {
+                                let message = match result {
+                                    crate::agent::copilot_auth::GithubCopilotAuthFlowResult::AlreadyAvailable => {
+                                        "GitHub Copilot auth already available".to_string()
+                                    }
+                                    crate::agent::copilot_auth::GithubCopilotAuthFlowResult::ImportedFromGhCli => {
+                                        "Imported GitHub Copilot auth from GitHub CLI".to_string()
+                                    }
+                                    crate::agent::copilot_auth::GithubCopilotAuthFlowResult::Started => {
+                                        "Started GitHub Copilot browser login".to_string()
+                                    }
+                                };
+                                framed
+                                    .send(DaemonMessage::AgentProviderLoginResult {
+                                        provider_id: provider_id.clone(),
+                                        success: true,
+                                        message: Some(message),
+                                    })
+                                    .await?;
+                            }
+                            Err(error) => {
+                                framed
+                                    .send(DaemonMessage::AgentProviderLoginResult {
+                                        provider_id: provider_id.clone(),
+                                        success: false,
+                                        message: Some(error.to_string()),
+                                    })
+                                    .await?;
+                            }
+                        }
+
+                        let states = agent.get_provider_auth_states().await;
+                        let json = serde_json::to_string(&states).unwrap_or_default();
+                        framed
+                            .send(DaemonMessage::AgentProviderAuthStates { states_json: json })
+                            .await?;
+                        continue;
+                    }
+
                     // Surgical update: modify only the target provider's key.
                     let mut config = agent.get_config().await;
                     let entry = config
@@ -652,7 +696,18 @@ if matches!(
                                 model: def.map(|d| d.default_model.to_string()).unwrap_or_default(),
                                 api_key: String::new(),
                                 assistant_id: String::new(),
-                                auth_source: crate::agent::types::AuthSource::ApiKey,
+                                auth_source: auth_source
+                                    .as_deref()
+                                    .map(|value| match value {
+                                        "chatgpt_subscription" => {
+                                            crate::agent::types::AuthSource::ChatgptSubscription
+                                        }
+                                        "github_copilot" => {
+                                            crate::agent::types::AuthSource::GithubCopilot
+                                        }
+                                        _ => crate::agent::types::AuthSource::ApiKey,
+                                    })
+                                    .unwrap_or(crate::agent::types::AuthSource::ApiKey),
                                 api_transport:
                                     crate::agent::types::default_api_transport_for_provider(
                                         &provider_id,
@@ -677,6 +732,15 @@ if matches!(
                     entry.api_key = api_key;
                     if !base_url.is_empty() {
                         entry.base_url = base_url;
+                    }
+                    if let Some(auth_source) = auth_source.as_deref() {
+                        entry.auth_source = match auth_source {
+                            "chatgpt_subscription" => {
+                                crate::agent::types::AuthSource::ChatgptSubscription
+                            }
+                            "github_copilot" => crate::agent::types::AuthSource::GithubCopilot,
+                            _ => crate::agent::types::AuthSource::ApiKey,
+                        };
                     }
                     agent.set_config(config).await;
 

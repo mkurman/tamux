@@ -120,7 +120,7 @@ pub enum ClientMessage {
     AgentRetireGeneratedTool { tool_name: String },
     AgentValidateProvider { provider_id: String, base_url: String, api_key: String, auth_source: String },
     AgentGetProviderAuthStates,
-    AgentLoginProvider { provider_id: String, api_key: String, #[serde(default)] base_url: String },
+    AgentLoginProvider { provider_id: String, api_key: String, #[serde(default)] base_url: String, #[serde(default)] auth_source: Option<String> },
     AgentLogoutProvider { provider_id: String },
     AgentSetSubAgent { sub_agent_json: String },
     AgentRemoveSubAgent { sub_agent_id: String },

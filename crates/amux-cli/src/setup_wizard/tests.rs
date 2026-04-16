@@ -346,6 +346,38 @@ fn config_set_response_completes_on_operation_acceptance() {
 }
 
 #[test]
+fn provider_login_terminal_response_extracts_success_payload() {
+    let response = parse_provider_login_terminal_response(DaemonMessage::AgentProviderLoginResult {
+        provider_id: "github-copilot".to_string(),
+        success: true,
+        message: Some("Started GitHub Copilot browser login".to_string()),
+    })
+    .expect("terminal response")
+    .expect("successful parse");
+
+    assert_eq!(
+        response,
+        (true, Some("Started GitHub Copilot browser login".to_string()))
+    );
+}
+
+#[test]
+fn provider_login_terminal_response_extracts_error_payload() {
+    let response = parse_provider_login_terminal_response(DaemonMessage::AgentProviderLoginResult {
+        provider_id: "github-copilot".to_string(),
+        success: false,
+        message: Some("GitHub CLI login flow failed".to_string()),
+    })
+    .expect("terminal response")
+    .expect("successful parse");
+
+    assert_eq!(
+        response,
+        (false, Some("GitHub CLI login flow failed".to_string()))
+    );
+}
+
+#[test]
 fn setup_probe_marks_ready_when_provider_is_persisted() {
     assert_eq!(
         setup_probe_from_config_json(r#"{"provider":"openai"}"#),

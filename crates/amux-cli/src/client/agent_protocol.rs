@@ -159,6 +159,8 @@ pub(super) enum AgentBridgeCommand {
         api_key: String,
         #[serde(default)]
         base_url: String,
+        #[serde(default)]
+        auth_source: Option<String>,
     },
     LogoutProvider {
         provider_id: String,

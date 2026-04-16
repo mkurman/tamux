@@ -179,6 +179,93 @@ async fn configure_api_key(
     Ok(api_key)
 }
 
+async fn persist_provider_auth_source(
+    framed: &mut Framed<impl tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin, AmuxCodec>,
+    provider_id: &str,
+    auth_source: &str,
+) -> Result<()> {
+    let value_json = serde_json::to_string(auth_source).unwrap_or_default();
+    set_config_item(
+        framed,
+        format!("/providers/{provider_id}/auth_source"),
+        value_json.clone(),
+    )
+    .await
+    .with_context(|| format!("Failed to set auth_source for {provider_id}"))?;
+    set_config_item(framed, "/auth_source", value_json)
+        .await
+        .context("Failed to set active auth_source")?;
+    Ok(())
+}
+
+async fn configure_provider_auth(
+    framed: &mut Framed<impl tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin, AmuxCodec>,
+    provider: &ProviderSelection,
+    selected_provider: &ProviderAuthState,
+) -> Result<(String, String)> {
+    if provider.auth_source == "github_copilot" {
+        let options = if selected_provider.authenticated {
+            vec![
+                ("Keep existing browser login", "github_copilot_keep"),
+                ("Use browser login", "github_copilot"),
+                ("Use API token instead", "api_key"),
+            ]
+        } else {
+            vec![
+                ("Use browser login", "github_copilot"),
+                ("Use API token instead", "api_key"),
+            ]
+        };
+        let choice = select_list(
+            "How should GitHub Copilot authenticate?",
+            &options,
+            false,
+            0,
+        )?
+        .expect("provider auth selection is required");
+        let selected_auth_source = options[choice].1;
+
+        if selected_auth_source == "github_copilot_keep" {
+            persist_provider_auth_source(framed, &provider.provider_id, "github_copilot").await?;
+            println!("Keeping existing GitHub Copilot browser login.");
+            return Ok(("(existing)".to_string(), "github_copilot".to_string()));
+        }
+
+        if selected_auth_source == "github_copilot" {
+            persist_provider_auth_source(framed, &provider.provider_id, "github_copilot").await?;
+            let (success, message) = login_provider_on_stream(
+                framed,
+                &provider.provider_id,
+                "",
+                &provider.base_url,
+                Some("github_copilot"),
+            )
+            .await?;
+            if success {
+                if let Some(message) = message {
+                    println!("{message}.");
+                }
+                println!(
+                    "If the browser flow is still in progress, complete it and rerun `tamux setup` if validation fails."
+                );
+                return Ok((String::new(), "github_copilot".to_string()));
+            }
+            anyhow::bail!(
+                "{}",
+                message.unwrap_or_else(|| "GitHub Copilot login failed".to_string())
+            );
+        }
+
+        let api_key = configure_api_key(framed, provider, selected_provider).await?;
+        persist_provider_auth_source(framed, &provider.provider_id, "api_key").await?;
+        return Ok((api_key, "api_key".to_string()));
+    }
+
+    let api_key = configure_api_key(framed, provider, selected_provider).await?;
+    persist_provider_auth_source(framed, &provider.provider_id, &provider.auth_source).await?;
+    Ok((api_key, provider.auth_source.clone()))
+}
+
 async fn fetch_selected_provider_state(
     framed: &mut Framed<impl tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin, AmuxCodec>,
     provider_id: &str,
@@ -402,7 +489,8 @@ pub async fn run_setup_wizard() -> Result<PostSetupAction> {
     let selected_provider =
         fetch_selected_provider_state(&mut framed, &provider.provider_id).await?;
     println!();
-    let api_key_saved = configure_api_key(&mut framed, &provider, &selected_provider).await?;
+    let (api_key_saved, selected_auth_source) =
+        configure_provider_auth(&mut framed, &provider, &selected_provider).await?;
     println!();
 
     set_config_item(
@@ -428,7 +516,7 @@ pub async fn run_setup_wizard() -> Result<PostSetupAction> {
     if !is_local_provider(&provider.provider_id) && !api_key_saved.is_empty() {
         println!();
         println!("Testing connection to {}...", provider.provider_name);
-        match validate_provider_on_stream(&mut framed, &provider.provider_id, &provider.auth_source)
+        match validate_provider_on_stream(&mut framed, &provider.provider_id, &selected_auth_source)
             .await
         {
             Ok(true) => println!("{}", "Connection successful!".with(style::Color::Green)),
