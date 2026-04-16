@@ -43,10 +43,13 @@ pub(super) enum WhatsAppLinkAttemptOutcome {
 }
 
 pub(super) fn wizard_keyboard_enhancement_flags() -> KeyboardEnhancementFlags {
+    // Only request DISAMBIGUATE_ESCAPE_CODES so that arrow-key sequences are
+    // unambiguous.  The more aggressive flags (REPORT_EVENT_TYPES,
+    // REPORT_ALTERNATE_KEYS, REPORT_ALL_KEYS_AS_ESCAPE_CODES) re-encode Enter
+    // as a CSI-u escape sequence that some terminals (e.g. Yakuake/Konsole)
+    // emit in a shape crossterm does not reliably map back to KeyCode::Enter,
+    // causing the wizard to hang after the first selection — see issue #53.
     KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
-        | KeyboardEnhancementFlags::REPORT_EVENT_TYPES
-        | KeyboardEnhancementFlags::REPORT_ALTERNATE_KEYS
-        | KeyboardEnhancementFlags::REPORT_ALL_KEYS_AS_ESCAPE_CODES
 }
 
 pub(super) struct RawModeGuard {
