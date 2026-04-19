@@ -374,7 +374,10 @@ fn project_task_runs_exposes_parent_runtime_workspace_and_classification() {
         .expect("parent run projected");
     assert_eq!(parent_run.kind, AgentRunKind::Task);
     assert_eq!(parent_run.classification, "coding");
-    assert_eq!(parent_run.runtime_status.kind, AgentRunRuntimeStatusKind::Running);
+    assert_eq!(
+        parent_run.runtime_status.kind,
+        AgentRunRuntimeStatusKind::Running
+    );
     assert_eq!(parent_run.workspace_id.as_deref(), Some("workspace-parent"));
 
     let child_run = runs
@@ -383,7 +386,10 @@ fn project_task_runs_exposes_parent_runtime_workspace_and_classification() {
         .expect("child run projected");
     assert_eq!(child_run.kind, AgentRunKind::Subagent);
     assert_eq!(child_run.runtime, "hermes");
-    assert_eq!(child_run.runtime_status.kind, AgentRunRuntimeStatusKind::Queued);
+    assert_eq!(
+        child_run.runtime_status.kind,
+        AgentRunRuntimeStatusKind::Queued
+    );
     assert_eq!(child_run.parent_run_id.as_deref(), Some("parent-task"));
     assert_eq!(
         child_run.parent_title.as_deref(),
@@ -396,9 +402,8 @@ fn project_task_runs_exposes_parent_runtime_workspace_and_classification() {
 fn project_task_runs_normalizes_blocked_and_retry_runtime_states() {
     let mut awaiting_approval = sample_task("approval-task", "goal_test");
     awaiting_approval.status = TaskStatus::Blocked;
-    awaiting_approval.blocked_reason = Some(
-        "waiting for operator approval: orchestrator_policy_escalation".to_string(),
-    );
+    awaiting_approval.blocked_reason =
+        Some("waiting for operator approval: orchestrator_policy_escalation".to_string());
     awaiting_approval.awaiting_approval_id = Some("approval-1".to_string());
 
     let mut waiting_for_dependencies = sample_task("deps-task", "goal_test");
@@ -420,7 +425,8 @@ fn project_task_runs_normalizes_blocked_and_retry_runtime_states() {
 
     let mut waiting_for_resources = sample_task("resource-task", "goal_test");
     waiting_for_resources.status = TaskStatus::Blocked;
-    waiting_for_resources.blocked_reason = Some("waiting for workspace lock: repo-main".to_string());
+    waiting_for_resources.blocked_reason =
+        Some("waiting for workspace lock: repo-main".to_string());
     waiting_for_resources.awaiting_approval_id = None;
 
     let mut retrying = sample_task("retry-task", "goal_test");
@@ -461,15 +467,25 @@ fn project_task_runs_normalizes_blocked_and_retry_runtime_states() {
         Some("waiting for dependencies: task-a, task-b")
     );
 
-    let subagents = by_id.get("subagents-task").expect("subagent runtime status");
-    assert_eq!(subagents.kind, AgentRunRuntimeStatusKind::WaitingForSubagents);
+    let subagents = by_id
+        .get("subagents-task")
+        .expect("subagent runtime status");
+    assert_eq!(
+        subagents.kind,
+        AgentRunRuntimeStatusKind::WaitingForSubagents
+    );
 
-    let scheduled = by_id.get("scheduled-task").expect("scheduled runtime status");
+    let scheduled = by_id
+        .get("scheduled-task")
+        .expect("scheduled runtime status");
     assert_eq!(scheduled.kind, AgentRunRuntimeStatusKind::Scheduled);
     assert_eq!(scheduled.scheduled_at, Some(1_234_567));
 
     let resources = by_id.get("resource-task").expect("resource runtime status");
-    assert_eq!(resources.kind, AgentRunRuntimeStatusKind::WaitingForResources);
+    assert_eq!(
+        resources.kind,
+        AgentRunRuntimeStatusKind::WaitingForResources
+    );
 
     let retrying = by_id.get("retry-task").expect("retry runtime status");
     assert_eq!(retrying.kind, AgentRunRuntimeStatusKind::Retrying);
