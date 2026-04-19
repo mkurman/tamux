@@ -1,4 +1,5 @@
 use super::*;
+use std::sync::Arc;
 
 #[cfg(unix)]
 #[tokio::test]
@@ -39,6 +40,42 @@ async fn list_omits_dead_sessions_and_managed_execution_rejects_them() {
         .expect_err("dead sessions must be rejected for managed execution");
 
     assert!(error.to_string().contains("not alive"));
+}
+
+#[tokio::test]
+async fn list_includes_restored_stale_sessions() {
+    let root = tempfile::tempdir().expect("tempdir");
+    let history = Arc::new(
+        HistoryStore::new_test_store(root.path())
+            .await
+            .expect("test history store initialization failed"),
+    );
+    let stale_id = uuid::Uuid::new_v4();
+    let manager = SessionManager::new_with_history_and_state(
+        history,
+        256,
+        root.path().join("daemon-state.json"),
+        DaemonState {
+            previous_sessions: vec![SavedSession {
+                id: stale_id.to_string(),
+                shell: Some("/bin/zsh".to_string()),
+                cwd: Some("/tmp/stale".to_string()),
+                workspace_id: Some("workspace-stale".to_string()),
+                cols: 100,
+                rows: 30,
+            }],
+        },
+    );
+
+    let sessions = manager.list().await;
+    assert_eq!(sessions.len(), 1);
+    let session = &sessions[0];
+    assert_eq!(session.id, stale_id);
+    assert_eq!(session.cwd.as_deref(), Some("/tmp/stale"));
+    assert_eq!(session.workspace_id.as_deref(), Some("workspace-stale"));
+    assert!(!session.is_alive, "restored session should be marked stale");
+    assert_eq!(session.cols, 100);
+    assert_eq!(session.rows, 30);
 }
 
 #[cfg(unix)]

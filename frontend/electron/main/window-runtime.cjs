@@ -84,6 +84,7 @@ function createWindowRuntime(options) {
                 preload: path.join(options.electronDir, 'preload.cjs'),
                 nodeIntegration: false,
                 contextIsolation: true,
+                sandbox: true,
                 webviewTag: true,
             },
             title: 'tamux',

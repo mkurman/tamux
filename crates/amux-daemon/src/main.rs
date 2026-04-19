@@ -62,21 +62,6 @@ async fn daemon_main() -> Result<()> {
 
     tracing::info!("tamux-daemon starting");
 
-    // Restore any persisted state.
-    let state_path = state::default_state_path();
-    tracing::info!(?state_path, "state file location");
-    match state::load_state(&state_path) {
-        Ok(state) => {
-            tracing::info!(
-                previous_sessions = state.previous_sessions.len(),
-                "loaded persisted daemon state"
-            );
-        }
-        Err(error) => {
-            tracing::warn!(error = %error, path = %state_path.display(), "failed to load persisted daemon state");
-        }
-    }
-
     // Start the IPC server (blocks until shutdown signal).
     server::run().await?;
 

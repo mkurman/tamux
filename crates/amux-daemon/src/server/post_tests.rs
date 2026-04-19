@@ -54,13 +54,33 @@ pub async fn run() -> Result<()> {
         .context("failed to initialize shared history store")?;
     let history = Arc::new(history);
 
+    let state_path = crate::state::default_state_path();
+    tracing::info!(?state_path, "state file location");
+    let restored_state = match crate::state::load_state(&state_path) {
+        Ok(state) => {
+            tracing::info!(
+                previous_sessions = state.previous_sessions.len(),
+                "loaded persisted daemon state"
+            );
+            state
+        }
+        Err(error) => {
+            tracing::warn!(error = %error, path = %state_path.display(), "failed to load persisted daemon state");
+            crate::state::DaemonState::default()
+        }
+    };
+
     // load_config now takes &HistoryStore
     let agent_config = crate::agent::load_config_from_history(&history)
         .await
         .unwrap_or_default();
 
-    let manager =
-        SessionManager::new_with_history(history.clone(), agent_config.pty_channel_capacity);
+    let manager = SessionManager::new_with_history_and_state(
+        history.clone(),
+        agent_config.pty_channel_capacity,
+        state_path,
+        restored_state,
+    );
     let reaper_manager = manager.clone();
 
     tokio::spawn(async move {

@@ -148,18 +148,20 @@ async fn queue_with_snapshot(
     request: ManagedCommandRequest,
     snapshot_reason: &str,
 ) -> Result<(usize, Option<amux_protocol::SnapshotInfo>)> {
-    let snapshot = {
-        let session = session.lock().await;
-        snapshots
-            .create_snapshot(
-                workspace_id,
-                Some(session_id),
-                request.cwd.as_deref().or_else(|| session.cwd()),
-                Some(&request.command),
-                snapshot_reason,
-            )
-            .await?
+    let snapshot_cwd = if let Some(cwd) = request.cwd.as_deref() {
+        Some(cwd.to_owned())
+    } else {
+        session.lock().await.cwd().map(ToOwned::to_owned)
     };
+    let snapshot = snapshots
+        .create_snapshot(
+            workspace_id,
+            Some(session_id),
+            snapshot_cwd.as_deref(),
+            Some(&request.command),
+            snapshot_reason,
+        )
+        .await?;
     let position =
         session
             .lock()
@@ -403,6 +405,7 @@ impl SessionManager {
             .collect();
 
         let mut infos = Vec::with_capacity(sessions.len());
+        let mut live_ids = std::collections::HashSet::with_capacity(sessions.len());
         for (id, session) in sessions {
             let s = session.lock().await;
             if s.is_dead() {
@@ -427,6 +430,38 @@ impl SessionManager {
                 exit_code: None,
                 is_alive: !s.is_dead(),
                 active_command: s.active_command(),
+            });
+            live_ids.insert(id);
+        }
+
+        let restored_sessions = self.restored_sessions.read().await.clone();
+        for session in restored_sessions {
+            let Ok(id) = session.id.parse() else {
+                tracing::warn!(session_id = %session.id, "skipping restored session with invalid id");
+                continue;
+            };
+
+            if live_ids.contains(&id) {
+                continue;
+            }
+
+            if let Some(filter) = workspace_filter {
+                if session.workspace_id.as_deref() != Some(filter) {
+                    continue;
+                }
+            }
+
+            infos.push(SessionInfo {
+                id,
+                title: None,
+                cwd: session.cwd,
+                cols: session.cols,
+                rows: session.rows,
+                created_at: 0,
+                workspace_id: session.workspace_id,
+                exit_code: None,
+                is_alive: false,
+                active_command: None,
             });
         }
         infos

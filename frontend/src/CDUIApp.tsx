@@ -75,11 +75,11 @@ const CDUIApp = () => {
       try {
         const pluginResults = await (window.tamux ?? window.amux)?.loadInstalledPlugins?.();
         if (Array.isArray(pluginResults)) {
-          const failedOrSkipped = pluginResults.filter(
-            (result) => result && (result.status === "error" || result.status === "skipped"),
+          const failed = pluginResults.filter(
+            (result) => result && result.status === "error",
           );
-          if (failedOrSkipped.length > 0) {
-            console.warn("Some installed plugins failed to load", failedOrSkipped);
+          if (failed.length > 0) {
+            console.warn("Some installed plugins failed to load", failed);
           }
         }
       } catch (pluginLoadError) {

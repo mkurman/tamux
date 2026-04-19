@@ -24,6 +24,7 @@ mod session_ops;
 /// Central session registry — the source of truth for all running terminals.
 pub struct SessionManager {
     sessions: RwLock<HashMap<SessionId, Arc<Mutex<PtySession>>>>,
+    restored_sessions: RwLock<Vec<SavedSession>>,
     state_path: std::path::PathBuf,
     history: Arc<HistoryStore>,
     snapshots: SnapshotStore,
@@ -91,10 +92,25 @@ impl SessionManager {
     }
 
     pub fn new_with_history(history: Arc<HistoryStore>, pty_channel_capacity: usize) -> Arc<Self> {
+        Self::new_with_history_and_state(
+            history,
+            pty_channel_capacity,
+            crate::state::default_state_path(),
+            DaemonState::default(),
+        )
+    }
+
+    pub fn new_with_history_and_state(
+        history: Arc<HistoryStore>,
+        pty_channel_capacity: usize,
+        state_path: std::path::PathBuf,
+        restored_state: DaemonState,
+    ) -> Arc<Self> {
         let snapshots = SnapshotStore::new_with_history((*history).clone());
         Arc::new(Self {
             sessions: RwLock::new(HashMap::new()),
-            state_path: crate::state::default_state_path(),
+            restored_sessions: RwLock::new(restored_state.previous_sessions),
+            state_path,
             history,
             snapshots,
             pending_approvals: RwLock::new(HashMap::new()),

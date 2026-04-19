@@ -3,6 +3,10 @@ const path = require('path');
 
 const { ensureTamuxDataDir, readJsonFile } = require('./app-data.cjs');
 
+function unsafeRendererPluginsEnabled(env = process.env) {
+    return String(env.TAMUX_ENABLE_UNSAFE_RENDERER_PLUGINS || '').trim() === '1';
+}
+
 function getPluginsRootDir() {
     const pluginsDir = path.join(ensureTamuxDataDir(), 'plugins');
     fs.mkdirSync(pluginsDir, { recursive: true });
@@ -62,6 +66,17 @@ function loadInstalledPluginScripts() {
                 };
             }
 
+            if (!unsafeRendererPluginsEnabled()) {
+                return {
+                    packageName: entry.packageName,
+                    pluginName: entry.pluginName,
+                    entryPath: entry.entryPath,
+                    format: entry.format,
+                    status: 'skipped',
+                    error: 'Renderer plugin loading is disabled by default. Set TAMUX_ENABLE_UNSAFE_RENDERER_PLUGINS=1 to opt in.',
+                };
+            }
+
             const resolvedEntryPath = resolveInstalledPluginEntryPath(entry.entryPath);
             if (!fs.existsSync(resolvedEntryPath) || !fs.statSync(resolvedEntryPath).isFile()) {
                 return {
@@ -99,4 +114,5 @@ module.exports = {
     getPluginsRootDir,
     listInstalledPlugins,
     loadInstalledPluginScripts,
+    unsafeRendererPluginsEnabled,
 };
