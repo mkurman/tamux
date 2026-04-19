@@ -11,6 +11,7 @@ include!("openai_transport.rs");
 include!("openai_responses_protocol.rs");
 include!("native_assistant.rs");
 include!("openai_runtime.rs");
+pub mod provider_capabilities;
 include!("openai_sse.rs");
 include!("anthropic_response_types.rs");
 include!("anthropic_request_fields.rs");

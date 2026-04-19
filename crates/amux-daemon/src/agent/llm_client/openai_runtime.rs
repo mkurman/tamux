@@ -89,13 +89,8 @@ async fn run_openai_chat_completions(
     }
 
     if let Some(ref schema) = config.response_schema {
-        // Try strict json_schema for providers that support it (OpenAI gpt-4o+)
-        if matches!(provider, amux_shared::providers::PROVIDER_ID_OPENAI)
-            && (config.model.contains("gpt-4o")
-                || config.model.contains("gpt-4.1")
-                || config.model.contains("gpt-5")
-                || config.model.starts_with("o"))
-        {
+        // Try strict json_schema for providers that support it; fall back to json_object.
+        if provider_capabilities::supports_structured_output(provider, &config.model) {
             body["response_format"] = serde_json::json!({
                 "type": "json_schema",
                 "json_schema": {
