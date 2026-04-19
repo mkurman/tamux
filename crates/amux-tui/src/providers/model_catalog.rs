@@ -187,6 +187,17 @@ pub(super) fn known_models_for_provider_auth(
             ("mimo-v2-pro", "MiMo V2 Pro", 1_000_000),
             ("mimo-v2-omni", "MiMo V2 Omni", 256_000),
         ],
+        PROVIDER_ID_OPENCODE_GO => &[
+            ("glm-5.1", "GLM-5.1", 204_800),
+            ("glm-5", "GLM-5", 202_752),
+            ("kimi-k2.5", "Kimi K2.5", 262_144),
+            ("mimo-v2-pro", "MiMo V2 Pro", 1_000_000),
+            ("mimo-v2-omni", "MiMo V2 Omni", 256_000),
+            ("minimax-m2.5", "MiniMax M2.5", 205_000),
+            ("minimax-m2.7", "MiniMax M2.7", 205_000),
+            ("qwen3.5-plus", "Qwen3.5 Plus", 983_616),
+            ("qwen3.6-plus", "Qwen3.6 Plus", 983_616),
+        ],
         PROVIDER_ID_NOUS_PORTAL => &[
             ("nousresearch/hermes-4-70b", "Nous: Hermes 4 70B", 131_072),
             ("nousresearch/hermes-4-405b", "Nous: Hermes 4 405B", 131_072),

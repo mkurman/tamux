@@ -375,6 +375,17 @@ pub const PROVIDERS: &[ProviderDef] = &[
         native_base_url: None,
     },
     ProviderDef {
+        id: PROVIDER_ID_OPENCODE_GO,
+        name: "OpenCode Go",
+        default_base_url: "https://opencode.ai/zen/go/v1",
+        default_model: "glm-5.1",
+        supported_transports: CHAT_ONLY_TRANSPORTS,
+        default_transport: "chat_completions",
+        supported_auth_sources: API_KEY_ONLY_AUTH_SOURCES,
+        default_auth_source: "api_key",
+        native_base_url: None,
+    },
+    ProviderDef {
         id: PROVIDER_ID_OPENCODE_ZEN,
         name: "OpenCode Zen",
         default_base_url: "https://opencode.ai/zen/v1",
@@ -421,11 +432,20 @@ pub fn default_transport_for(provider: &str) -> &'static str {
         .unwrap_or("chat_completions")
 }
 
+fn opencode_go_uses_anthropic_messages(model: &str) -> bool {
+    let normalized = model.trim().to_ascii_lowercase();
+    let normalized = normalized
+        .strip_prefix("opencode-go/")
+        .unwrap_or(normalized.as_str());
+    normalized.starts_with("minimax-m2.")
+}
+
 pub fn uses_fixed_anthropic_messages(provider: &str, model: &str) -> bool {
     matches!(
         provider,
         PROVIDER_ID_ANTHROPIC | PROVIDER_ID_MINIMAX | PROVIDER_ID_MINIMAX_CODING_PLAN
-    ) || (provider == PROVIDER_ID_OPENCODE_ZEN && model.starts_with("claude"))
+    ) || (provider == PROVIDER_ID_OPENCODE_GO && opencode_go_uses_anthropic_messages(model))
+        || (provider == PROVIDER_ID_OPENCODE_ZEN && model.starts_with("claude"))
 }
 
 pub fn supported_auth_sources_for(provider: &str) -> &'static [&'static str] {

@@ -217,6 +217,63 @@ pub const OPENCODE_ZEN_MODELS: &[ModelDefinition] = &[
     },
 ];
 
+pub const OPENCODE_GO_MODELS: &[ModelDefinition] = &[
+    ModelDefinition {
+        id: "glm-5.1",
+        name: "GLM-5.1",
+        context_window: 204800,
+        modalities: TEXT_ONLY,
+    },
+    ModelDefinition {
+        id: "glm-5",
+        name: "GLM-5",
+        context_window: 202752,
+        modalities: TEXT_ONLY,
+    },
+    ModelDefinition {
+        id: "kimi-k2.5",
+        name: "Kimi K2.5",
+        context_window: 262144,
+        modalities: TEXT_ONLY,
+    },
+    ModelDefinition {
+        id: "mimo-v2-pro",
+        name: "MiMo V2 Pro",
+        context_window: 1000000,
+        modalities: TEXT_ONLY,
+    },
+    ModelDefinition {
+        id: "mimo-v2-omni",
+        name: "MiMo V2 Omni",
+        context_window: 256000,
+        modalities: MULTIMODAL,
+    },
+    ModelDefinition {
+        id: "minimax-m2.5",
+        name: "MiniMax M2.5",
+        context_window: 205000,
+        modalities: TEXT_ONLY,
+    },
+    ModelDefinition {
+        id: "minimax-m2.7",
+        name: "MiniMax M2.7",
+        context_window: 205000,
+        modalities: TEXT_ONLY,
+    },
+    ModelDefinition {
+        id: "qwen3.5-plus",
+        name: "Qwen3.5 Plus",
+        context_window: 983616,
+        modalities: TEXT_ONLY,
+    },
+    ModelDefinition {
+        id: "qwen3.6-plus",
+        name: "Qwen3.6 Plus",
+        context_window: 983616,
+        modalities: TEXT_ONLY,
+    },
+];
+
 pub const ARCEE_MODELS: &[ModelDefinition] = &[
     ModelDefinition {
         id: "trinity-large-thinking",

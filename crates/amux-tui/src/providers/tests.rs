@@ -2,12 +2,13 @@ use super::*;
 use crate::providers::context::is_known_default_url;
 use amux_shared::providers::{
     MINIMAX_PROVIDER, PROVIDER_ID_ALIBABA_CODING_PLAN, PROVIDER_ID_ANTHROPIC, PROVIDER_ID_ARCEE,
-    PROVIDER_ID_GITHUB_COPILOT, PROVIDER_ID_NVIDIA, PROVIDER_ID_OPENAI, QWEN_PROVIDER,
+    PROVIDER_ID_GITHUB_COPILOT, PROVIDER_ID_NVIDIA, PROVIDER_ID_OPENAI, PROVIDER_ID_OPENCODE_GO,
+    QWEN_PROVIDER,
 };
 
 #[test]
-fn provider_count_is_26() {
-    assert_eq!(PROVIDERS.len(), 26);
+fn provider_count_is_28() {
+    assert_eq!(PROVIDERS.len(), 28);
 }
 
 #[test]
@@ -55,6 +56,18 @@ fn anthropic_message_providers_are_detected() {
         PROVIDER_ID_ALIBABA_CODING_PLAN,
         "qwen3.6-plus"
     ));
+    assert!(uses_fixed_anthropic_messages(
+        PROVIDER_ID_OPENCODE_GO,
+        "minimax-m2.7"
+    ));
+    assert!(uses_fixed_anthropic_messages(
+        PROVIDER_ID_OPENCODE_GO,
+        "opencode-go/minimax-m2.5"
+    ));
+    assert!(!uses_fixed_anthropic_messages(
+        PROVIDER_ID_OPENCODE_GO,
+        "glm-5.1"
+    ));
 }
 
 #[test]
@@ -82,6 +95,16 @@ fn known_models_openai_chatgpt_subscription_is_restricted() {
     assert!(models.iter().any(|m| m.id == "gpt-5.4"));
     assert!(!models.iter().any(|m| m.id == "gpt-4o"));
     assert!(!models.iter().any(|m| m.id == "o3"));
+}
+
+#[test]
+fn known_models_opencode_go_include_open_and_minimax_tiers() {
+    let models = known_models_for_provider(PROVIDER_ID_OPENCODE_GO);
+    assert_eq!(models.len(), 9);
+    assert!(models.iter().any(|model| model.id == "glm-5.1"));
+    assert!(models.iter().any(|model| model.id == "mimo-v2-pro"));
+    assert!(models.iter().any(|model| model.id == "minimax-m2.7"));
+    assert!(models.iter().any(|model| model.id == "qwen3.6-plus"));
 }
 
 #[test]

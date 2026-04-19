@@ -241,6 +241,17 @@ pub const PROVIDERS: &[ProviderDef] = &[
         native_base_url: None,
     },
     ProviderDef {
+        id: PROVIDER_ID_OPENCODE_GO,
+        name: "OpenCode Go",
+        default_base_url: "https://opencode.ai/zen/go/v1",
+        default_model: "glm-5.1",
+        supported_transports: CHAT_ONLY_TRANSPORTS,
+        default_transport: "chat_completions",
+        supported_auth_sources: API_KEY_ONLY_AUTH_SOURCES,
+        default_auth_source: "api_key",
+        native_base_url: None,
+    },
+    ProviderDef {
         id: PROVIDER_ID_OPENCODE_ZEN,
         name: "OpenCode Zen",
         default_base_url: "https://opencode.ai/zen/v1",

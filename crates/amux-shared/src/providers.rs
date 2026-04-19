@@ -24,6 +24,7 @@ pub const PROVIDER_ID_NOUS_PORTAL: &str = "nous-portal";
 pub const PROVIDER_ID_OLLAMA: &str = "ollama";
 pub const PROVIDER_ID_OPENAI: &str = "openai";
 pub const PROVIDER_ID_CHATGPT_SUBSCRIPTION: &str = "chatgpt_subscription";
+pub const PROVIDER_ID_OPENCODE_GO: &str = "opencode-go";
 pub const PROVIDER_ID_OPENCODE_ZEN: &str = "opencode-zen";
 pub const PROVIDER_ID_OPENROUTER: &str = "openrouter";
 pub const PROVIDER_ID_QWEN: &str = "qwen";
@@ -62,6 +63,9 @@ pub const NOUS_PORTAL_PROVIDER: ProviderRef = ProviderRef {
 };
 pub const OPENAI_PROVIDER: ProviderRef = ProviderRef {
     id: PROVIDER_ID_OPENAI,
+};
+pub const OPENCODE_GO_PROVIDER: ProviderRef = ProviderRef {
+    id: PROVIDER_ID_OPENCODE_GO,
 };
 pub const OPENCODE_ZEN_PROVIDER: ProviderRef = ProviderRef {
     id: PROVIDER_ID_OPENCODE_ZEN,

@@ -27,6 +27,10 @@ export function normalizeLlmStreamTimeoutInput(value: string): number | null {
     return Math.min(1800, Math.max(30, parsed));
 }
 
+export function getVisibleProviderOptions(providerOptions: { id: AgentProviderId; label: string }[]) {
+    return providerOptions;
+}
+
 export function AgentTab({
     settings, updateSetting, resetSettings,
 }: {
@@ -76,16 +80,11 @@ export function AgentTab({
         { id: "minimax-coding-plan", label: "MiniMax Coding Plan" },
         { id: "alibaba-coding-plan", label: "Alibaba Coding Plan" },
         { id: "xiaomi-mimo-token-plan", label: "Xiaomi MiMo Token Plan" },
+        { id: "opencode-go", label: "OpenCode Go" },
         { id: "opencode-zen", label: "OpenCode Zen" },
         { id: "custom", label: "Custom" },
     ];
-    const providerOptions = allProviderOptions.filter((provider) =>
-        provider.id === "custom"
-        || provider.id === "azure-openai"
-        || providerAuthStates.some(
-            (state) => state.authenticated && state.provider_id === provider.id,
-        ),
-    );
+    const providerOptions = getVisibleProviderOptions(allProviderOptions);
 
     const providerConfig = settings[settings.active_provider] as AgentProviderConfig;
     const authCapability = getDaemonOwnedAuthCapability(settings.agent_backend);

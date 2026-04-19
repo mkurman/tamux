@@ -408,6 +408,22 @@ pub const PROVIDER_DEFINITIONS: &[ProviderDefinition] = &[
         supports_response_continuity: false,
     },
     ProviderDefinition {
+        id: PROVIDER_ID_OPENCODE_GO,
+        name: "OpenCode Go",
+        default_base_url: "https://opencode.ai/zen/go/v1",
+        default_model: "glm-5.1",
+        api_type: ApiType::OpenAI,
+        auth_method: AuthMethod::Bearer,
+        models: OPENCODE_GO_MODELS,
+        supports_model_fetch: true,
+        anthropic_base_url: None,
+        supported_transports: CHAT_ONLY_TRANSPORTS,
+        default_transport: ApiTransport::ChatCompletions,
+        native_transport_kind: None,
+        native_base_url: None,
+        supports_response_continuity: false,
+    },
+    ProviderDefinition {
         id: PROVIDER_ID_OPENCODE_ZEN,
         name: "OpenCode Zen",
         default_base_url: "https://opencode.ai/zen/v1",
@@ -483,6 +499,14 @@ fn is_direct_anthropic_url(base_url: &str) -> bool {
         || lower.starts_with("http://api.anthropic.com/")
 }
 
+fn opencode_go_uses_anthropic_api(model: &str) -> bool {
+    let normalized = model.trim().to_ascii_lowercase();
+    let normalized = normalized
+        .strip_prefix("opencode-go/")
+        .unwrap_or(normalized.as_str());
+    normalized.starts_with("minimax-m2.")
+}
+
 pub fn get_provider_api_type(provider_id: &str, model: &str, configured_url: &str) -> ApiType {
     if provider_id == PROVIDER_ID_ANTHROPIC
         || (model.starts_with("claude") && is_direct_anthropic_url(configured_url))
@@ -506,6 +530,9 @@ pub fn get_provider_api_type(provider_id: &str, model: &str, configured_url: &st
                 } else {
                     ApiType::OpenAI
                 }
+            } else if provider_id == PROVIDER_ID_OPENCODE_GO && opencode_go_uses_anthropic_api(model)
+            {
+                ApiType::Anthropic
             } else if provider_id == PROVIDER_ID_OPENCODE_ZEN && !model.starts_with("claude") {
                 ApiType::OpenAI
             } else {

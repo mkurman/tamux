@@ -158,6 +158,18 @@ const OPENCODE_ZEN_MODELS: ModelDefinition[] = [
   { id: "kimi-k2.5", name: "Kimi K2.5", contextWindow: 262144 },
 ];
 
+const OPENCODE_GO_MODELS: ModelDefinition[] = [
+  { id: "glm-5.1", name: "GLM-5.1", contextWindow: 204800 },
+  { id: "glm-5", name: "GLM-5", contextWindow: 202752 },
+  { id: "kimi-k2.5", name: "Kimi K2.5", contextWindow: 262144 },
+  { id: "mimo-v2-pro", name: "MiMo V2 Pro", contextWindow: 1_000_000 },
+  { id: "mimo-v2-omni", name: "MiMo V2 Omni", contextWindow: 256_000, modalities: M_MULTI },
+  { id: "minimax-m2.5", name: "MiniMax M2.5", contextWindow: 205000 },
+  { id: "minimax-m2.7", name: "MiniMax M2.7", contextWindow: 205000 },
+  { id: "qwen3.5-plus", name: "Qwen3.5 Plus", contextWindow: 983616 },
+  { id: "qwen3.6-plus", name: "Qwen3.6 Plus", contextWindow: 983616 },
+];
+
 const GROQ_MODELS: ModelDefinition[] = [
   { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B Versatile", contextWindow: 128000 },
   { id: "llama-3.1-8b-instant", name: "Llama 3.1 8B", contextWindow: 128000 },
@@ -287,6 +299,7 @@ export const PROVIDER_DEFINITIONS: ProviderDefinition[] = [
   { id: "minimax-coding-plan", name: "MiniMax Coding Plan", defaultBaseUrl: "https://api.minimax.io/anthropic", defaultModel: "MiniMax-M2.7", apiType: "anthropic", authMethod: "x-api-key", models: MINIMAX_MODELS, supportsModelFetch: false, supportedTransports: CHAT_ONLY_TRANSPORTS, defaultTransport: "chat_completions", supportedAuthSources: API_KEY_ONLY_AUTH_SOURCES, defaultAuthSource: "api_key", supportsResponseContinuity: false },
   { id: "alibaba-coding-plan", name: "Alibaba Coding Plan", defaultBaseUrl: "https://coding-intl.dashscope.aliyuncs.com/v1", defaultModel: "qwen3.6-plus", apiType: "openai", authMethod: "bearer", models: ALIBABA_CODING_MODELS, supportsModelFetch: false, supportedTransports: CHAT_ONLY_TRANSPORTS, defaultTransport: "chat_completions", supportedAuthSources: API_KEY_ONLY_AUTH_SOURCES, defaultAuthSource: "api_key", supportsResponseContinuity: false },
   { id: "xiaomi-mimo-token-plan", name: "Xiaomi MiMo Token Plan", defaultBaseUrl: "https://api.xiaomimimo.com/v1", defaultModel: "mimo-v2-pro", apiType: "openai", authMethod: "bearer", models: XIAOMI_MIMO_TOKEN_PLAN_MODELS, supportsModelFetch: false, supportedTransports: CHAT_ONLY_TRANSPORTS, defaultTransport: "chat_completions", supportedAuthSources: API_KEY_ONLY_AUTH_SOURCES, defaultAuthSource: "api_key", supportsResponseContinuity: false },
+  { id: "opencode-go", name: "OpenCode Go", defaultBaseUrl: "https://opencode.ai/zen/go/v1", defaultModel: "glm-5.1", apiType: "openai", authMethod: "bearer", models: OPENCODE_GO_MODELS, supportsModelFetch: true, supportedTransports: CHAT_ONLY_TRANSPORTS, defaultTransport: "chat_completions", supportedAuthSources: API_KEY_ONLY_AUTH_SOURCES, defaultAuthSource: "api_key", supportsResponseContinuity: false },
   { id: "opencode-zen", name: "OpenCode Zen", defaultBaseUrl: "https://opencode.ai/zen/v1", defaultModel: "claude-sonnet-4-5", apiType: "anthropic", authMethod: "bearer", models: OPENCODE_ZEN_MODELS, supportsModelFetch: true, supportedTransports: CHAT_ONLY_TRANSPORTS, defaultTransport: "chat_completions", supportedAuthSources: API_KEY_ONLY_AUTH_SOURCES, defaultAuthSource: "api_key", supportsResponseContinuity: false },
   { id: "custom", name: "Custom", defaultBaseUrl: "", defaultModel: "", apiType: "openai", authMethod: "bearer", models: EMPTY_MODELS, supportsModelFetch: false, supportedTransports: RESPONSES_AND_CHAT_TRANSPORTS, defaultTransport: "responses", supportedAuthSources: API_KEY_ONLY_AUTH_SOURCES, defaultAuthSource: "api_key", supportsResponseContinuity: true },
 ];
@@ -430,6 +443,14 @@ function isAlibabaCodingPlanAnthropicBaseUrl(baseUrl: string): boolean {
   return lower.includes("dashscope.aliyuncs.com") && lower.includes("/apps/anthropic");
 }
 
+function opencodeGoUsesAnthropicApi(model: string): boolean {
+  const normalized = (model || "").trim().toLowerCase();
+  const unprefixed = normalized.startsWith("opencode-go/")
+    ? normalized.slice("opencode-go/".length)
+    : normalized;
+  return unprefixed.startsWith("minimax-m2.");
+}
+
 export function getProviderApiType(
   providerId: AgentProviderId,
   model: string,
@@ -443,6 +464,9 @@ export function getProviderApiType(
     return "anthropic";
   }
   if (definition.anthropicBaseUrl && model.startsWith("claude")) {
+    return "anthropic";
+  }
+  if (providerId === "opencode-go" && opencodeGoUsesAnthropicApi(model)) {
     return "anthropic";
   }
   if (providerId === "opencode-zen" && !model.startsWith("claude")) {

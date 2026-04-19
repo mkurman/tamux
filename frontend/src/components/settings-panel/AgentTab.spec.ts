@@ -1,4 +1,4 @@
-import { normalizeLlmStreamTimeoutInput } from "./AgentTab";
+import { getVisibleProviderOptions, normalizeLlmStreamTimeoutInput } from "./AgentTab";
 
 function assert(condition: unknown, message: string): void {
     if (!condition) {
@@ -19,4 +19,14 @@ assert(
 assert(
     normalizeLlmStreamTimeoutInput("29") === 30,
     "Timeout input should clamp to the minimum allowed value",
+);
+
+const visibleProviders = getVisibleProviderOptions([
+    { id: "opencode-go", label: "OpenCode Go" },
+    { id: "opencode-zen", label: "OpenCode Zen" },
+]);
+
+assert(
+    visibleProviders.some((provider) => provider.id === "opencode-go"),
+    "Visible provider options should include OpenCode Go",
 );

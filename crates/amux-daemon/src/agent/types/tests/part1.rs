@@ -48,6 +48,56 @@ fn alibaba_coding_plan_switches_to_anthropic_for_anthropic_base_url() {
 }
 
 #[test]
+fn opencode_go_switches_api_type_for_minimax_models() {
+    let provider =
+        get_provider_definition(amux_shared::providers::PROVIDER_ID_OPENCODE_GO)
+            .expect("opencode go");
+    assert_eq!(provider.default_base_url, "https://opencode.ai/zen/go/v1");
+    assert_eq!(provider.default_model, "glm-5.1");
+    assert_eq!(provider.api_type, ApiType::OpenAI);
+    assert_eq!(provider.auth_method, AuthMethod::Bearer);
+    assert!(provider.supports_model_fetch);
+    assert_eq!(provider.default_transport, ApiTransport::ChatCompletions);
+    assert_eq!(provider.models.len(), 9);
+    assert_eq!(provider.models[0].id, "glm-5.1");
+    assert_eq!(provider.models[4].id, "mimo-v2-omni");
+    assert_eq!(provider.models[6].id, "minimax-m2.7");
+    assert_eq!(provider.models[8].id, "qwen3.6-plus");
+    assert_eq!(
+        get_provider_api_type(
+            amux_shared::providers::PROVIDER_ID_OPENCODE_GO,
+            "glm-5.1",
+            "https://opencode.ai/zen/go/v1"
+        ),
+        ApiType::OpenAI
+    );
+    assert_eq!(
+        get_provider_api_type(
+            amux_shared::providers::PROVIDER_ID_OPENCODE_GO,
+            "minimax-m2.7",
+            "https://opencode.ai/zen/go/v1"
+        ),
+        ApiType::Anthropic
+    );
+    assert_eq!(
+        get_provider_api_type(
+            amux_shared::providers::PROVIDER_ID_OPENCODE_GO,
+            "opencode-go/minimax-m2.5",
+            "https://opencode.ai/zen/go/v1"
+        ),
+        ApiType::Anthropic
+    );
+    assert_eq!(
+        get_provider_base_url(
+            amux_shared::providers::PROVIDER_ID_OPENCODE_GO,
+            "minimax-m2.7",
+            "https://opencode.ai/zen/go/v1"
+        ),
+        "https://opencode.ai/zen/go/v1"
+    );
+}
+
+#[test]
 fn default_retry_delay_is_five_seconds() {
     let parsed: AgentConfig = serde_json::from_str("{}").unwrap();
     assert_eq!(parsed.retry_delay_ms, 5_000);
