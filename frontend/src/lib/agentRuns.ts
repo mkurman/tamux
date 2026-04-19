@@ -1,5 +1,20 @@
 import { getBridge } from "./bridge";
 import { formatTaskStatus, formatTaskTimestamp, isTaskActive, isTaskTerminal, taskStatusColor, type AgentTaskPriority, type AgentTaskStatus } from "./agentTaskQueue";
+import type { StatusChipTone } from "./statusChips";
+
+export type RunStatusTone = StatusChipTone;
+
+export type RunStatusChip = {
+    icon: string;
+    label: string;
+    tone: RunStatusTone;
+};
+
+export type RunStatusReasonChip = {
+    icon: string;
+    label: string;
+    tone: RunStatusTone;
+};
 
 export type AgentRunKind = "task" | "subagent";
 export type AgentRunClassification = "coding" | "research" | "ops" | "browser" | "messaging" | "mixed" | string;
@@ -129,6 +144,45 @@ export function formatRunStatus(run: AgentRun): string {
     }
 }
 
+export function getRunStatusChip(run: AgentRun): RunStatusChip {
+    switch (run.runtime_status?.kind) {
+        case "running":
+            return { icon: "●", label: "Running", tone: "accent" };
+        case "awaiting_approval":
+            return { icon: "⚑", label: "Approval", tone: "approval" };
+        case "waiting_for_dependencies":
+            return { icon: "⇢", label: "Deps", tone: "neutral" };
+        case "waiting_for_subagents":
+            return { icon: "◌", label: "Children", tone: "neutral" };
+        case "scheduled":
+            return { icon: "◷", label: "Scheduled", tone: "neutral" };
+        case "waiting_for_resources":
+            return { icon: "⌛", label: "Resources", tone: "neutral" };
+        case "retrying":
+            return { icon: "↻", label: "Retrying", tone: "warning" };
+        case "failed_analyzing":
+            return { icon: "△", label: "Analyzing", tone: "warning" };
+        case "budget_exceeded":
+            return { icon: "⚠", label: "Budget", tone: "warning" };
+        case "completed":
+            return { icon: "✓", label: "Done", tone: "success" };
+        case "failed":
+            return { icon: "✕", label: "Failed", tone: "danger" };
+        case "cancelled":
+            return { icon: "—", label: "Cancelled", tone: "neutral" };
+        case "queued":
+            return { icon: "○", label: "Queued", tone: "neutral" };
+        case "blocked":
+            return { icon: "⏸", label: "Blocked", tone: "neutral" };
+        default:
+            return {
+                icon: "○",
+                label: formatRunStatus(run),
+                tone: "neutral",
+            };
+    }
+}
+
 export function runStatusColor(run: AgentRun): string {
     switch (run.runtime_status?.kind) {
         case "running":
@@ -164,7 +218,57 @@ export function getRunStatusReason(run: AgentRun): string | null {
         return null;
     }
     const trimmed = reason.trim();
-    return trimmed.length > 0 ? trimmed : null;
+    if (trimmed.length === 0) {
+        return null;
+    }
+
+    return shortenRunStatusReason(trimmed);
+}
+
+export function getRunStatusReasonChip(run: AgentRun): RunStatusReasonChip | null {
+    switch (run.runtime_status?.kind) {
+        case "awaiting_approval":
+            return { icon: "⚑", label: "Approval", tone: "approval" };
+        case "waiting_for_dependencies":
+            return { icon: "⇢", label: "Depends on", tone: "neutral" };
+        case "waiting_for_subagents":
+            return { icon: "◌", label: "Waiting on", tone: "neutral" };
+        case "scheduled":
+            return { icon: "◷", label: "At", tone: "neutral" };
+        case "waiting_for_resources":
+            return { icon: "⌛", label: "Resource", tone: "neutral" };
+        case "retrying":
+            return { icon: "↻", label: "Retry", tone: "warning" };
+        case "failed_analyzing":
+            return { icon: "△", label: "Analysis", tone: "warning" };
+        case "budget_exceeded":
+            return { icon: "⚠", label: "Budget", tone: "warning" };
+        case "blocked":
+            return { icon: "⏸", label: "Blocked", tone: "neutral" };
+        default:
+            return null;
+    }
+}
+
+function shortenRunStatusReason(reason: string): string {
+    const prefixes: Array<[string, string]> = [
+        ["waiting for dependencies:", "Dependencies: "],
+        ["waiting for subagents:", "Subagents: "],
+        ["waiting for workspace lock:", "Workspace: "],
+        ["waiting for lane availability:", "Lane: "],
+        ["waiting for subagent slot:", "Slot: "],
+        ["waiting for operator approval:", "Approval: "],
+        ["scheduled for ", "At "],
+    ];
+
+    const lower = reason.toLowerCase();
+    for (const [prefix, replacement] of prefixes) {
+        if (lower.startsWith(prefix)) {
+            return `${replacement}${reason.slice(prefix.length).trim()}`;
+        }
+    }
+
+    return reason;
 }
 
 export function formatRunTimestamp(timestamp?: number | null): string {

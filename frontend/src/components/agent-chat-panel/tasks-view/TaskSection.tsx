@@ -1,3 +1,4 @@
+import { StatusChip } from "@/components/StatusChip";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getBridge } from "@/lib/bridge";
 import { ActionButton, EmptyPanel, iconButtonStyle } from "../shared";
@@ -10,6 +11,9 @@ import {
 import {
   formatTaskStatus,
   formatTaskTimestamp,
+  getTaskStatusChip,
+  getTaskStatusReason,
+  getTaskStatusReasonChip,
   isTaskActive,
   isTaskTerminal,
   taskStatusColor,
@@ -137,6 +141,9 @@ export function TaskCard({
   onCancel?: () => void;
 }) {
   const statusColor = taskStatusColor(task.status);
+  const statusChip = getTaskStatusChip(task);
+  const statusReason = getTaskStatusReason(task);
+  const reasonChip = getTaskStatusReasonChip(task);
   const isActive = isTaskActive(task);
 
   return (
@@ -176,12 +183,12 @@ export function TaskCard({
               Subagent · runtime {task.runtime ?? "daemon"}
             </div>
           )}
-          <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: 2 }}>
-            <span style={{ color: statusColor, fontWeight: 600 }}>{formatTaskStatus(task)}</span>
-            {task.status === "in_progress" && task.progress > 0 && <span> {task.progress}%</span>}
-            <span style={{ marginLeft: "var(--space-2)" }}>{formatTaskTimestamp(task.created_at)}</span>
+          <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: 2, display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
+            <StatusChip icon={statusChip.icon} label={statusChip.label} tone={statusChip.tone} />
+            {task.status === "in_progress" && task.progress > 0 && <span>{task.progress}%</span>}
+            <span>{formatTaskTimestamp(task.created_at)}</span>
             {typeof task.retry_count === "number" && typeof task.max_retries === "number" && (
-              <span style={{ marginLeft: "var(--space-2)" }}>
+              <span>
                 retry {task.retry_count}/{task.max_retries === 0 ? "∞" : task.max_retries}
               </span>
             )}
@@ -193,9 +200,20 @@ export function TaskCard({
           </button>
         )}
       </div>
-      {(task.blocked_reason || task.error) && (
-        <div style={{ fontSize: "var(--text-xs)", color: "var(--danger)", marginTop: "var(--space-2)" }}>
-          {task.blocked_reason ?? task.error}
+      {statusReason && (
+        <div
+          style={{
+            fontSize: "var(--text-xs)",
+            color: "var(--text-secondary)",
+            marginTop: "var(--space-2)",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "var(--space-2)",
+            flexWrap: "wrap",
+          }}
+        >
+          {reasonChip ? <StatusChip icon={reasonChip.icon} label={reasonChip.label} tone={reasonChip.tone} style={{ fontSize: 10, padding: "1px 6px" }} /> : null}
+          <span>{statusReason}</span>
         </div>
       )}
       {task.command && (
@@ -498,6 +516,9 @@ export function TaskPostMortem({
   const setActiveSurface = useWorkspaceStore((state) => state.setActiveSurface);
   const setActivePaneId = useWorkspaceStore((state) => state.setActivePaneId);
   const focusCanvasPanel = useWorkspaceStore((state) => state.focusCanvasPanel);
+  const statusChip = getTaskStatusChip(task);
+  const statusReason = getTaskStatusReason(task);
+  const reasonChip = getTaskStatusReasonChip(task);
   const logs = [...(task.logs ?? [])].slice(-8).reverse();
   const location = useMemo(
     () => findTaskWorkspaceLocation(workspaces, task.session_id),
@@ -526,8 +547,9 @@ export function TaskPostMortem({
           {task.goal_step_title && task.goal_step_title !== task.title ? ` · Step: ${task.goal_step_title}` : ""}
         </div>
       )}
-      <div style={{ fontSize: "var(--text-xs)", color: taskStatusColor(task.status), marginTop: 4 }}>
-        {formatTaskStatus(task)}
+      <div style={{ fontSize: "var(--text-xs)", marginTop: 4, display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
+        <StatusChip icon={statusChip.icon} label={statusChip.label} tone={statusChip.tone} />
+        <span style={{ color: "var(--text-muted)" }}>{formatTaskStatus(task)}</span>
       </div>
       {task.command && (
         <div style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)", marginTop: "var(--space-2)" }}>
@@ -572,7 +594,13 @@ export function TaskPostMortem({
           <ActionButton onClick={() => onSelectTask(task.parent_task_id!)}>Back To Parent</ActionButton>
         </div>
       )}
-      {task.last_error && (
+      {statusReason && (
+        <div style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)", marginTop: "var(--space-2)", display: "flex", alignItems: "flex-start", gap: "var(--space-2)", flexWrap: "wrap" }}>
+          {reasonChip ? <StatusChip icon={reasonChip.icon} label={reasonChip.label} tone={reasonChip.tone} style={{ fontSize: 10, padding: "1px 6px" }} /> : null}
+          <span>{statusReason}</span>
+        </div>
+      )}
+      {task.last_error && task.last_error !== statusReason && (
         <div style={{ fontSize: "var(--text-xs)", color: "var(--danger)", marginTop: "var(--space-2)" }}>
           {task.last_error}
         </div>

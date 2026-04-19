@@ -1,9 +1,13 @@
+import { StatusChip } from "@/components/StatusChip";
 import { useEffect, useRef, useMemo, useState, type CSSProperties, type Dispatch, type SetStateAction } from "react";
 import { getBridge } from "@/lib/bridge";
 import {
     fetchAgentTasks,
     formatTaskStatus,
     formatTaskTimestamp,
+    getTaskStatusChip,
+    getTaskStatusReason,
+    getTaskStatusReasonChip,
     isTaskActive,
     taskStatusColor,
     type AgentQueueTask,
@@ -161,6 +165,7 @@ export function TaskTrayButton() {
                                 tasks.map((task) => {
                                     const selected = task.id === selectedTask?.id;
                                     const color = taskStatusColor(task.status);
+                                    const statusChip = getTaskStatusChip(task);
                                     return (
                                         <button
                                             key={task.id}
@@ -190,8 +195,8 @@ export function TaskTrayButton() {
                                                     <div style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                                         {task.title}
                                                     </div>
-                                                    <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-                                                        <span style={{ color }}>{formatTaskStatus(task)}</span>
+                                                    <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", display: "flex", gap: "var(--space-2)", flexWrap: "wrap", alignItems: "center" }}>
+                                                        <StatusChip icon={statusChip.icon} label={statusChip.label} tone={statusChip.tone} />
                                                         <span>{task.priority}</span>
                                                         <span>{formatTaskTimestamp(task.created_at)}</span>
                                                     </div>
@@ -216,7 +221,9 @@ export function TaskTrayButton() {
 }
 
 function TaskDetail({ task, onCancelled }: { task: AgentQueueTask; onCancelled: () => void }) {
-    const color = taskStatusColor(task.status);
+    const statusChip = getTaskStatusChip(task);
+    const statusReason = getTaskStatusReason(task);
+    const reasonChip = getTaskStatusReasonChip(task);
     const amux = getBridge();
     const canCancel = task.status === "queued" || task.status === "in_progress" || task.status === "blocked" || task.status === "failed_analyzing";
     const logs = [...(task.logs ?? [])].slice(-6).reverse();
@@ -232,9 +239,12 @@ function TaskDetail({ task, onCancelled }: { task: AgentQueueTask; onCancelled: 
             <div style={{ display: "flex", justifyContent: "space-between", gap: "var(--space-3)", alignItems: "flex-start" }}>
                 <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: "var(--text-base)", fontWeight: 700, color: "var(--text-primary)" }}>{task.title}</div>
-                    <div style={{ marginTop: 4, fontSize: "var(--text-xs)", color }}>
-                        {formatTaskStatus(task)}
-                        {typeof task.retry_count === "number" && typeof task.max_retries === "number" ? ` · retry ${task.retry_count}/${task.max_retries}` : ""}
+                    <div style={{ marginTop: 4, fontSize: "var(--text-xs)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
+                        <StatusChip icon={statusChip.icon} label={statusChip.label} tone={statusChip.tone} />
+                        <span>
+                            {formatTaskStatus(task)}
+                            {typeof task.retry_count === "number" && typeof task.max_retries === "number" ? ` · retry ${task.retry_count}/${task.max_retries}` : ""}
+                        </span>
                     </div>
                 </div>
                 {canCancel && (
@@ -247,8 +257,13 @@ function TaskDetail({ task, onCancelled }: { task: AgentQueueTask; onCancelled: 
             <div style={detailBlockStyle}>{task.description}</div>
 
             {task.command && <div style={detailBlockStyle}>Command: {task.command}</div>}
-            {task.blocked_reason && <div style={detailBlockStyle}>Gate: {task.blocked_reason}</div>}
-            {task.last_error && <div style={{ ...detailBlockStyle, color: "var(--danger)" }}>Last error: {task.last_error}</div>}
+            {statusReason && (
+                <div style={{ ...detailBlockStyle, display: "flex", alignItems: "flex-start", gap: "var(--space-2)", flexWrap: "wrap" }}>
+                    {reasonChip ? <StatusChip icon={reasonChip.icon} label={reasonChip.label} tone={reasonChip.tone} style={{ fontSize: 10, padding: "1px 6px" }} /> : null}
+                    <span>{statusReason}</span>
+                </div>
+            )}
+            {task.last_error && !statusReason && <div style={{ ...detailBlockStyle, color: "var(--danger)" }}>Last error: {task.last_error}</div>}
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "var(--space-2)", marginTop: "var(--space-3)" }}>
                 <InfoPill label="Created" value={formatTaskTimestamp(task.created_at)} />

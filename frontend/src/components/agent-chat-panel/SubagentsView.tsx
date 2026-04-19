@@ -1,8 +1,9 @@
+import { StatusChip } from "@/components/StatusChip";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getBridge } from "@/lib/bridge";
 import { resolveReactChatHistoryMessageLimit } from "@/lib/chatHistoryPageSize";
 import { allLeafIds, findLeaf } from "../../lib/bspTree";
-import { fetchAgentRuns, formatRunStatus, formatRunTimestamp, getRunStatusReason, isRunActive, isSubagentRun, runStatusColor, type AgentRun } from "../../lib/agentRuns";
+import { fetchAgentRuns, formatRunStatus, formatRunTimestamp, getRunStatusChip, getRunStatusReason, getRunStatusReasonChip, isRunActive, isSubagentRun, runStatusColor, type AgentRun } from "../../lib/agentRuns";
 import { fetchThreadTodos } from "../../lib/agentTodos";
 import { buildHydratedRemoteMessage, type RemoteAgentMessageRecord, useAgentStore } from "../../lib/agentStore";
 import type { Workspace } from "../../lib/types";
@@ -338,6 +339,8 @@ export function SubagentsView({ onOpenThreadView, onOpenTasksView }: SubagentsVi
                                 {group.items.map((run) => {
                                     const location = findTaskWorkspaceLocation(workspaces, run.session_id);
                                     const statusReason = getRunStatusReason(run);
+                                    const statusChip = getRunStatusChip(run);
+                                    const reasonChip = getRunStatusReasonChip(run);
                                     return (
                                         <div
                                             key={run.id}
@@ -351,9 +354,17 @@ export function SubagentsView({ onOpenThreadView, onOpenTasksView }: SubagentsVi
                                             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-3)", flexWrap: "wrap" }}>
                                                 <div style={{ minWidth: 0, flex: 1 }}>
                                                     <div style={{ fontSize: "var(--text-sm)", fontWeight: 700, color: "var(--text-primary)" }}>{run.title}</div>
-                                                    <div style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)", marginTop: 4 }}>
-                                                        {formatRunStatus(run)} · runtime {run.runtime ?? "daemon"} · {formatRunTimestamp(run.created_at)}
-                                                        {run.classification ? ` · ${run.classification}` : ""}
+                                                    <div style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)", marginTop: 4, display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
+                                                        <StatusChip
+                                                            icon={statusChip.icon}
+                                                            label={statusChip.label}
+                                                            tone={statusChip.tone}
+                                                            style={{ fontSize: 10, padding: "2px 6px" }}
+                                                        />
+                                                        <span>
+                                                            {formatRunStatus(run)} · runtime {run.runtime ?? "daemon"} · {formatRunTimestamp(run.created_at)}
+                                                            {run.classification ? ` · ${run.classification}` : ""}
+                                                        </span>
                                                     </div>
                                                     <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: "var(--space-2)" }}>
                                                         {run.description}
@@ -369,9 +380,21 @@ export function SubagentsView({ onOpenThreadView, onOpenTasksView }: SubagentsVi
                                                                 border: "1px solid var(--border)",
                                                                 background: "color-mix(in srgb, var(--bg-primary) 72%, transparent)",
                                                                 wordBreak: "break-word",
+                                                                display: "flex",
+                                                                alignItems: "flex-start",
+                                                                gap: "var(--space-2)",
+                                                                flexWrap: "wrap",
                                                             }}
                                                         >
-                                                            {statusReason}
+                                                            {reasonChip ? (
+                                                                <StatusChip
+                                                                    icon={reasonChip.icon}
+                                                                    label={reasonChip.label}
+                                                                    tone={reasonChip.tone}
+                                                                    style={{ fontSize: 10, padding: "1px 6px" }}
+                                                                />
+                                                            ) : null}
+                                                            <span>{statusReason}</span>
                                                         </div>
                                                     )}
                                                     <div style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)", marginTop: "var(--space-2)" }}>

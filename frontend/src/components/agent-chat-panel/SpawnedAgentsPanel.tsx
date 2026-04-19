@@ -1,9 +1,10 @@
+import { StatusChip } from "@/components/StatusChip";
 import type { ReactNode } from "react";
 import type { AgentRun } from "@/lib/agentRuns";
 import {
-  formatRunStatus,
+  getRunStatusChip,
   getRunStatusReason,
-  runStatusColor,
+  getRunStatusReasonChip,
 } from "@/lib/agentRuns";
 import type {
   SpawnedAgentTree,
@@ -65,6 +66,8 @@ export function SpawnedAgentNode({
   const canOpen = canOpenSpawnedThread(node.item);
   const meta = renderNodeMeta(node.item);
   const statusReason = getRunStatusReason(node.item);
+  const statusChip = getRunStatusChip(node.item);
+  const reasonChip = getRunStatusReasonChip(node.item);
 
   return (
     <div
@@ -101,33 +104,18 @@ export function SpawnedAgentNode({
             )}
           </div>
           <div style={{ display: "flex", gap: "var(--space-1)", flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                borderRadius: 999,
-                padding: "2px 8px",
-                border: "1px solid color-mix(in srgb, currentColor 35%, transparent)",
-                color: runStatusColor(node.item),
-                background: "color-mix(in srgb, currentColor 10%, transparent)",
-              }}
-            >
-              {formatRunStatus(node.item)}
-            </span>
+            <StatusChip
+              icon={statusChip.icon}
+              label={statusChip.label}
+              tone={statusChip.tone}
+            />
             {isSelected && (
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  borderRadius: 999,
-                  padding: "2px 8px",
-                  border: "1px solid var(--accent-soft)",
-                  color: "var(--accent)",
-                  background: "rgba(94, 231, 223, 0.12)",
-                }}
-              >
-                Current
-              </span>
+              <StatusChip
+                icon="•"
+                label="Current"
+                tone="accent"
+                style={{ borderColor: "var(--accent-soft)" }}
+              />
             )}
           </div>
         </div>
@@ -142,9 +130,21 @@ export function SpawnedAgentNode({
               borderRadius: "var(--radius-md)",
               padding: "6px 8px",
               wordBreak: "break-word",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "var(--space-2)",
+              flexWrap: "wrap",
             }}
           >
-            {statusReason}
+            {reasonChip ? (
+              <StatusChip
+                icon={reasonChip.icon}
+                label={reasonChip.label}
+                tone={reasonChip.tone}
+                style={{ fontSize: 10, padding: "1px 6px" }}
+              />
+            ) : null}
+            <span>{statusReason}</span>
           </div>
         )}
 

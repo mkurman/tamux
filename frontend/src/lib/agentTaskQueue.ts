@@ -1,4 +1,5 @@
 import { getBridge } from "./bridge";
+import type { StatusChipTone } from "./statusChips";
 
 export type AgentTaskStatus =
     | "queued"
@@ -12,6 +13,20 @@ export type AgentTaskStatus =
     | "cancelled";
 
 export type AgentTaskPriority = "low" | "normal" | "high" | "urgent";
+
+export type TaskStatusTone = StatusChipTone;
+
+export type TaskStatusChip = {
+    icon: string;
+    label: string;
+    tone: TaskStatusTone;
+};
+
+export type TaskStatusReasonChip = {
+    icon: string;
+    label: string;
+    tone: TaskStatusTone;
+};
 
 export type AgentTaskLogLevel = "info" | "warn" | "error";
 
@@ -123,6 +138,87 @@ export function taskStatusColor(status: AgentTaskStatus): string {
         default:
             return "var(--text-secondary)";
     }
+}
+
+export function getTaskStatusChip(task: AgentQueueTask): TaskStatusChip {
+    switch (task.status) {
+        case "in_progress":
+            return { icon: "●", label: "Running", tone: "accent" };
+        case "awaiting_approval":
+            return { icon: "⚑", label: "Approval", tone: "approval" };
+        case "blocked":
+            return { icon: "⏸", label: "Blocked", tone: "neutral" };
+        case "failed_analyzing":
+            return { icon: "△", label: "Analyzing", tone: "warning" };
+        case "budget_exceeded":
+            return { icon: "⚠", label: "Budget", tone: "warning" };
+        case "completed":
+            return { icon: "✓", label: "Done", tone: "success" };
+        case "failed":
+            return { icon: "✕", label: "Failed", tone: "danger" };
+        case "cancelled":
+            return { icon: "—", label: "Cancelled", tone: "neutral" };
+        case "queued":
+        default:
+            return { icon: "○", label: "Queued", tone: "neutral" };
+    }
+}
+
+export function getTaskStatusReason(task: AgentQueueTask): string | null {
+    const reason = task.blocked_reason ?? task.error ?? null;
+    if (typeof reason !== "string") {
+        return null;
+    }
+
+    const trimmed = reason.trim();
+    if (trimmed.length === 0) {
+        return null;
+    }
+
+    return shortenTaskStatusReason(trimmed);
+}
+
+export function getTaskStatusReasonChip(task: AgentQueueTask): TaskStatusReasonChip | null {
+    if (!getTaskStatusReason(task)) {
+        return null;
+    }
+
+    switch (task.status) {
+        case "awaiting_approval":
+            return { icon: "⚑", label: "Approval", tone: "approval" };
+        case "blocked":
+            return { icon: "⏸", label: "Blocked", tone: "neutral" };
+        case "failed_analyzing":
+            return { icon: "△", label: "Analysis", tone: "warning" };
+        case "budget_exceeded":
+            return { icon: "⚠", label: "Budget", tone: "warning" };
+        case "failed":
+            return { icon: "✕", label: "Error", tone: "danger" };
+        default:
+            return task.blocked_reason
+                ? { icon: "⏸", label: "Gate", tone: "neutral" }
+                : { icon: "✕", label: "Error", tone: "danger" };
+    }
+}
+
+function shortenTaskStatusReason(reason: string): string {
+    const prefixes: Array<[string, string]> = [
+        ["waiting for dependencies:", "Dependencies: "],
+        ["waiting for subagents:", "Subagents: "],
+        ["waiting for workspace lock:", "Workspace: "],
+        ["waiting for lane availability:", "Lane: "],
+        ["waiting for operator approval:", "Approval: "],
+        ["scheduled for ", "At "],
+    ];
+
+    const lower = reason.toLowerCase();
+    for (const [prefix, replacement] of prefixes) {
+        if (lower.startsWith(prefix)) {
+            return `${replacement}${reason.slice(prefix.length).trim()}`;
+        }
+    }
+
+    return reason;
 }
 
 export function formatTaskTimestamp(timestamp?: number | null): string {

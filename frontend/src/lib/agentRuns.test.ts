@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatRunStatus, getRunStatusReason, isRunActive, isRunTerminal, runStatusColor, type AgentRun } from "./agentRuns";
+import { formatRunStatus, getRunStatusChip, getRunStatusReason, getRunStatusReasonChip, isRunActive, isRunTerminal, runStatusColor, type AgentRun } from "./agentRuns";
 
 function makeRun(overrides: Partial<AgentRun> = {}): AgentRun {
   return {
@@ -89,8 +89,28 @@ describe("agentRuns runtime_status wiring", () => {
       blocked_reason: "   ",
     });
 
-    expect(getRunStatusReason(runtimeReasonRun)).toBe("waiting for workspace lock: repo-main");
-    expect(getRunStatusReason(fallbackRun)).toBe("waiting for dependencies: task-a");
+    expect(getRunStatusReason(runtimeReasonRun)).toBe("Workspace: repo-main");
+    expect(getRunStatusReason(fallbackRun)).toBe("Dependencies: task-a");
     expect(getRunStatusReason(emptyRun)).toBeNull();
+  });
+
+  it("returns specific status and reason chips for normalized runtime states", () => {
+    const dependencyRun = makeRun({
+      runtime_status: {
+        kind: "waiting_for_dependencies",
+        reason: "waiting for dependencies: task-a, task-b",
+      },
+    });
+    const approvalRun = makeRun({
+      runtime_status: {
+        kind: "awaiting_approval",
+        reason: "waiting for operator approval: review_command",
+      },
+    });
+
+    expect(getRunStatusChip(dependencyRun)).toEqual({ icon: "⇢", label: "Deps", tone: "neutral" });
+    expect(getRunStatusReasonChip(dependencyRun)).toEqual({ icon: "⇢", label: "Depends on" });
+    expect(getRunStatusChip(approvalRun)).toEqual({ icon: "⚑", label: "Approval", tone: "approval" });
+    expect(getRunStatusReasonChip(approvalRun)).toEqual({ icon: "⚑", label: "Approval" });
   });
 });

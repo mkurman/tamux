@@ -102,8 +102,8 @@ describe("SpawnedAgentsPanel", () => {
     expect(html).toContain("Root Agent");
     expect(html).toContain("Spawned Child");
     expect(html).toContain("Waiting Child");
-    expect(html).toContain("Waiting for dependencies");
-    expect(html).toContain("waiting for dependencies: task-anchor");
+    expect(html).toContain("⇢ Deps");
+    expect(html).toContain("⇢ Depends on · Dependencies: task-anchor");
     expect(html).toContain("claude-code");
     expect(html).toContain("session-child");
     expect(html).toContain('aria-label="Open chat for Waiting Child"');
