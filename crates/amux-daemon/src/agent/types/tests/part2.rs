@@ -574,6 +574,7 @@ use amux_shared::providers::{
         assert!(provider
             .supported_transports
             .contains(&ApiTransport::ChatCompletions));
+        assert!(!provider.supports_response_continuity);
         assert_eq!(provider.models.len(), 2);
         assert_eq!(provider.models[0].id, "grok-4");
         assert_eq!(provider.models[0].context_window, 262_144);

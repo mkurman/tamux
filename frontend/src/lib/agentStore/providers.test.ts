@@ -42,6 +42,7 @@ describe("frontend xAI provider catalog", () => {
     expect(xai?.defaultModel).toBe("grok-4");
     expect(xai?.supportsModelFetch).toBe(true);
     expect(xai?.defaultTransport).toBe("responses");
+    expect(xai?.supportsResponseContinuity).toBe(false);
   });
 
   it("recognizes xAI as a valid provider id", () => {

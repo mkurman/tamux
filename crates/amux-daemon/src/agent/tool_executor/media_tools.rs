@@ -8,6 +8,7 @@ const DEFAULT_STT_MODEL: &str = "whisper-1";
 const DEFAULT_TTS_MODEL: &str = "gpt-4o-mini-tts";
 const DEFAULT_TTS_VOICE: &str = "alloy";
 const DEFAULT_XAI_TTS_VOICE: &str = "eve";
+const DEFAULT_XAI_TTS_LANGUAGE: &str = "auto";
 const DEFAULT_IMAGE_OUTPUT_FORMAT: &str = "png";
 const DEFAULT_TTS_OUTPUT_FORMAT: &str = "mp3";
 
@@ -650,9 +651,10 @@ fn build_xai_stt_multipart_fields(
 
 fn ordered_fields_to_multipart_form(
     fields: &[OrderedMultipartField],
-    bytes: &[u8],
+    bytes: Vec<u8>,
 ) -> Result<reqwest::multipart::Form> {
     let mut form = reqwest::multipart::Form::new();
+    let mut file_bytes = Some(bytes);
     for field in fields {
         match field {
             OrderedMultipartField::Text { name, value } => {
@@ -663,7 +665,11 @@ fn ordered_fields_to_multipart_form(
                 filename,
                 mime_type,
             } => {
-                let part = reqwest::multipart::Part::bytes(bytes.to_vec())
+                let part = reqwest::multipart::Part::bytes(
+                    file_bytes
+                        .take()
+                        .ok_or_else(|| anyhow::anyhow!("multipart form is missing file bytes"))?,
+                )
                     .file_name(filename.clone())
                     .mime_str(mime_type)?;
                 form = form.part(name.clone(), part);
@@ -690,7 +696,7 @@ fn build_xai_tts_body(
         .and_then(|value| value.as_str())
         .map(str::trim)
         .filter(|value| !value.is_empty())
-        .ok_or_else(|| anyhow::anyhow!("xAI text_to_speech requires a non-empty 'language' argument"))?;
+        .unwrap_or(DEFAULT_XAI_TTS_LANGUAGE);
     let mut body = serde_json::json!({
         "text": input,
         "voice_id": xai_tts_voice(args),
@@ -1209,7 +1215,7 @@ async fn execute_speech_to_text(
         .unwrap_or("json");
     let form = if route == AudioToolRoute::XaiStt {
         let fields = build_xai_stt_multipart_fields(args, &filename, &mime_type);
-        ordered_fields_to_multipart_form(&fields, &bytes)?
+        ordered_fields_to_multipart_form(&fields, bytes)?
     } else {
         let file_part = reqwest::multipart::Part::bytes(bytes)
             .file_name(filename)
@@ -1520,16 +1526,16 @@ mod media_tools_tests {
     }
 
     #[test]
-    fn xai_tts_body_requires_language() {
-        let error = build_xai_tts_body(
+    fn xai_tts_body_defaults_language_to_auto() {
+        let body = build_xai_tts_body(
             &serde_json::json!({
                 "input": "Hello from tamux"
             }),
             "Hello from tamux",
         )
-        .expect_err("xai body should reject missing language");
+        .expect("xai body should default missing language");
 
-        assert!(error.to_string().contains("requires a non-empty 'language' argument"));
+        assert_eq!(body["language"], "auto");
     }
 
     #[test]
