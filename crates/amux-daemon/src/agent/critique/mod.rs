@@ -3,6 +3,11 @@ pub(crate) mod arbiter;
 pub(crate) mod critic;
 pub(crate) mod types;
 
+#[cfg(test)]
+mod tests {
+    pub(crate) mod arbiter_calibration;
+}
+
 use anyhow::Result;
 use serde_json::json;
 use uuid::Uuid;
