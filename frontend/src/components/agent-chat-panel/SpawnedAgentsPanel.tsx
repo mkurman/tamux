@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { AgentRun } from "@/lib/agentRuns";
 import {
   formatRunStatus,
+  getRunStatusReason,
   runStatusColor,
 } from "@/lib/agentRuns";
 import type {
@@ -63,6 +64,7 @@ export function SpawnedAgentNode({
   );
   const canOpen = canOpenSpawnedThread(node.item);
   const meta = renderNodeMeta(node.item);
+  const statusReason = getRunStatusReason(node.item);
 
   return (
     <div
@@ -106,7 +108,7 @@ export function SpawnedAgentNode({
                 borderRadius: 999,
                 padding: "2px 8px",
                 border: "1px solid color-mix(in srgb, currentColor 35%, transparent)",
-                color: runStatusColor(node.item.status),
+                color: runStatusColor(node.item),
                 background: "color-mix(in srgb, currentColor 10%, transparent)",
               }}
             >
@@ -129,6 +131,22 @@ export function SpawnedAgentNode({
             )}
           </div>
         </div>
+
+        {statusReason && (
+          <div
+            style={{
+              fontSize: "var(--text-xs)",
+              color: "var(--text-secondary)",
+              background: "color-mix(in srgb, var(--bg-primary) 72%, transparent)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-md)",
+              padding: "6px 8px",
+              wordBreak: "break-word",
+            }}
+          >
+            {statusReason}
+          </div>
+        )}
 
         <div style={{ display: "flex", justifyContent: "space-between", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
           <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>

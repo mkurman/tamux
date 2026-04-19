@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getBridge } from "@/lib/bridge";
 import { resolveReactChatHistoryMessageLimit } from "@/lib/chatHistoryPageSize";
 import { allLeafIds, findLeaf } from "../../lib/bspTree";
-import { fetchAgentRuns, formatRunStatus, formatRunTimestamp, isRunActive, isSubagentRun, runStatusColor, type AgentRun } from "../../lib/agentRuns";
+import { fetchAgentRuns, formatRunStatus, formatRunTimestamp, getRunStatusReason, isRunActive, isSubagentRun, runStatusColor, type AgentRun } from "../../lib/agentRuns";
 import { fetchThreadTodos } from "../../lib/agentTodos";
 import { buildHydratedRemoteMessage, type RemoteAgentMessageRecord, useAgentStore } from "../../lib/agentStore";
 import type { Workspace } from "../../lib/types";
@@ -337,12 +337,13 @@ export function SubagentsView({ onOpenThreadView, onOpenTasksView }: SubagentsVi
                             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
                                 {group.items.map((run) => {
                                     const location = findTaskWorkspaceLocation(workspaces, run.session_id);
+                                    const statusReason = getRunStatusReason(run);
                                     return (
                                         <div
                                             key={run.id}
                                             style={{
                                                 borderRadius: "var(--radius-md)",
-                                                border: `1px solid ${runStatusColor(run.status)}`,
+                                                border: `1px solid ${runStatusColor(run)}`,
                                                 background: "var(--bg-tertiary)",
                                                 padding: "var(--space-3)",
                                             }}
@@ -357,6 +358,22 @@ export function SubagentsView({ onOpenThreadView, onOpenTasksView }: SubagentsVi
                                                     <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: "var(--space-2)" }}>
                                                         {run.description}
                                                     </div>
+                                                    {statusReason && (
+                                                        <div
+                                                            style={{
+                                                                fontSize: "var(--text-xs)",
+                                                                color: "var(--text-secondary)",
+                                                                marginTop: "var(--space-2)",
+                                                                padding: "6px 8px",
+                                                                borderRadius: "var(--radius-sm)",
+                                                                border: "1px solid var(--border)",
+                                                                background: "color-mix(in srgb, var(--bg-primary) 72%, transparent)",
+                                                                wordBreak: "break-word",
+                                                            }}
+                                                        >
+                                                            {statusReason}
+                                                        </div>
+                                                    )}
                                                     <div style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)", marginTop: "var(--space-2)" }}>
                                                         {run.thread_id ? `thread ${run.thread_id}` : "no chat thread yet"}
                                                         {run.session_id ? ` · session ${run.session_id}` : ""}

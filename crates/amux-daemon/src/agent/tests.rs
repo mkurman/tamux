@@ -374,6 +374,7 @@ fn project_task_runs_exposes_parent_runtime_workspace_and_classification() {
         .expect("parent run projected");
     assert_eq!(parent_run.kind, AgentRunKind::Task);
     assert_eq!(parent_run.classification, "coding");
+    assert_eq!(parent_run.runtime_status.kind, AgentRunRuntimeStatusKind::Running);
     assert_eq!(parent_run.workspace_id.as_deref(), Some("workspace-parent"));
 
     let child_run = runs
@@ -382,12 +383,98 @@ fn project_task_runs_exposes_parent_runtime_workspace_and_classification() {
         .expect("child run projected");
     assert_eq!(child_run.kind, AgentRunKind::Subagent);
     assert_eq!(child_run.runtime, "hermes");
+    assert_eq!(child_run.runtime_status.kind, AgentRunRuntimeStatusKind::Queued);
     assert_eq!(child_run.parent_run_id.as_deref(), Some("parent-task"));
     assert_eq!(
         child_run.parent_title.as_deref(),
         Some("Implement rust file patching")
     );
     assert_eq!(child_run.workspace_id.as_deref(), Some("workspace-child"));
+}
+
+#[test]
+fn project_task_runs_normalizes_blocked_and_retry_runtime_states() {
+    let mut awaiting_approval = sample_task("approval-task", "goal_test");
+    awaiting_approval.status = TaskStatus::Blocked;
+    awaiting_approval.blocked_reason = Some(
+        "waiting for operator approval: orchestrator_policy_escalation".to_string(),
+    );
+    awaiting_approval.awaiting_approval_id = Some("approval-1".to_string());
+
+    let mut waiting_for_dependencies = sample_task("deps-task", "goal_test");
+    waiting_for_dependencies.status = TaskStatus::Blocked;
+    waiting_for_dependencies.blocked_reason =
+        Some("waiting for dependencies: task-a, task-b".to_string());
+    waiting_for_dependencies.awaiting_approval_id = None;
+
+    let mut waiting_for_subagents = sample_task("subagents-task", "goal_test");
+    waiting_for_subagents.status = TaskStatus::Blocked;
+    waiting_for_subagents.blocked_reason = Some("waiting for subagents: sub-1, sub-2".to_string());
+    waiting_for_subagents.awaiting_approval_id = None;
+
+    let mut scheduled = sample_task("scheduled-task", "goal_test");
+    scheduled.status = TaskStatus::Blocked;
+    scheduled.scheduled_at = Some(1_234_567);
+    scheduled.blocked_reason = Some("scheduled for 1970-01-01T00:20:34Z".to_string());
+    scheduled.awaiting_approval_id = None;
+
+    let mut waiting_for_resources = sample_task("resource-task", "goal_test");
+    waiting_for_resources.status = TaskStatus::Blocked;
+    waiting_for_resources.blocked_reason = Some("waiting for workspace lock: repo-main".to_string());
+    waiting_for_resources.awaiting_approval_id = None;
+
+    let mut retrying = sample_task("retry-task", "goal_test");
+    retrying.status = TaskStatus::FailedAnalyzing;
+    retrying.blocked_reason = Some("temporary provider error".to_string());
+    retrying.awaiting_approval_id = None;
+    retrying.next_retry_at = Some(9_999);
+
+    let runs = project_task_runs(
+        &[
+            awaiting_approval,
+            waiting_for_dependencies,
+            waiting_for_subagents,
+            scheduled,
+            waiting_for_resources,
+            retrying,
+        ],
+        &[],
+    );
+
+    let by_id = runs
+        .iter()
+        .map(|run| (run.id.as_str(), &run.runtime_status))
+        .collect::<std::collections::HashMap<_, _>>();
+
+    let approval = by_id.get("approval-task").expect("approval runtime status");
+    assert_eq!(approval.kind, AgentRunRuntimeStatusKind::AwaitingApproval);
+    assert_eq!(approval.awaiting_approval_id.as_deref(), Some("approval-1"));
+    assert_eq!(
+        approval.reason.as_deref(),
+        Some("waiting for operator approval: orchestrator_policy_escalation")
+    );
+
+    let deps = by_id.get("deps-task").expect("dependency runtime status");
+    assert_eq!(deps.kind, AgentRunRuntimeStatusKind::WaitingForDependencies);
+    assert_eq!(
+        deps.reason.as_deref(),
+        Some("waiting for dependencies: task-a, task-b")
+    );
+
+    let subagents = by_id.get("subagents-task").expect("subagent runtime status");
+    assert_eq!(subagents.kind, AgentRunRuntimeStatusKind::WaitingForSubagents);
+
+    let scheduled = by_id.get("scheduled-task").expect("scheduled runtime status");
+    assert_eq!(scheduled.kind, AgentRunRuntimeStatusKind::Scheduled);
+    assert_eq!(scheduled.scheduled_at, Some(1_234_567));
+
+    let resources = by_id.get("resource-task").expect("resource runtime status");
+    assert_eq!(resources.kind, AgentRunRuntimeStatusKind::WaitingForResources);
+
+    let retrying = by_id.get("retry-task").expect("retry runtime status");
+    assert_eq!(retrying.kind, AgentRunRuntimeStatusKind::Retrying);
+    assert_eq!(retrying.next_retry_at, Some(9_999));
+    assert_eq!(retrying.reason.as_deref(), Some("temporary provider error"));
 }
 
 #[test]

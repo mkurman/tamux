@@ -18,6 +18,9 @@ function makeRun(overrides: Partial<AgentRun> = {}): AgentRun {
     title: "Root Agent",
     description: "Inspect the spawned agent",
     status: "in_progress",
+    runtime_status: {
+      kind: "running",
+    },
     priority: "normal",
     progress: 50,
     created_at: 1,

@@ -6,6 +6,7 @@ export type AgentTaskStatus =
     | "awaiting_approval"
     | "blocked"
     | "failed_analyzing"
+    | "budget_exceeded"
     | "completed"
     | "failed"
     | "cancelled";
@@ -94,6 +95,8 @@ export function formatTaskStatus(task: AgentQueueTask): string {
             return "Awaiting approval";
         case "failed_analyzing":
             return "Analyzing failure";
+        case "budget_exceeded":
+            return "Budget exceeded";
         default:
             return task.status.replace(/_/g, " ");
     }
@@ -108,6 +111,8 @@ export function taskStatusColor(status: AgentTaskStatus): string {
         case "blocked":
             return "var(--text-muted)";
         case "failed_analyzing":
+            return "var(--warning)";
+        case "budget_exceeded":
             return "var(--warning)";
         case "completed":
             return "var(--success)";

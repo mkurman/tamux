@@ -4005,3 +4005,112 @@ async fn search_memory_orders_graph_neighbors_by_strongest_retained_edge_weight(
         "when graph-backed search candidates tie textually, the higher-weight retained neighbor should rank first"
     );
 }
+
+#[tokio::test]
+async fn execute_tool_records_behavioral_event_for_successful_outcome() {
+    let root = tempdir().expect("tempdir should succeed");
+    let manager = SessionManager::new_test(root.path()).await;
+    let engine = AgentEngine::new_test(manager.clone(), AgentConfig::default(), root.path()).await;
+    let (event_tx, _) = broadcast::channel(8);
+
+    let file_path = root.path().join("behavioral-success.txt");
+    std::fs::write(&file_path, "hello behavioral event\n").expect("write success fixture");
+
+    let result = execute_tool(
+        &ToolCall::with_default_weles_review(
+            "tool-read-success-behavioral".to_string(),
+            ToolFunction {
+                name: "read_file".to_string(),
+                arguments: serde_json::json!({
+                    "path": file_path,
+                    "limit": 20,
+                })
+                .to_string(),
+            },
+        ),
+        &engine,
+        "thread-tool-success",
+        None,
+        &manager,
+        None,
+        &event_tx,
+        root.path(),
+        &engine.http_client,
+        None,
+    )
+    .await;
+
+    assert!(!result.is_error, "read_file should succeed: {}", result.content);
+
+    let events = engine
+        .history
+        .list_agent_events(Some("behavioral"), Some("thread-tool-success"), Some(20))
+        .await
+        .expect("behavioral events should list");
+    let row = events
+        .into_iter()
+        .find(|row| row.kind == "tool_execution_outcome")
+        .expect("tool execution outcome event should exist");
+    let payload: serde_json::Value =
+        serde_json::from_str(&row.payload_json).expect("behavioral payload should be valid json");
+    assert_eq!(payload.get("thread_id").and_then(|v| v.as_str()), Some("thread-tool-success"));
+    let nested = payload.get("payload").expect("payload envelope should contain payload field");
+    assert_eq!(nested.get("tool_call_id").and_then(|v| v.as_str()), Some("tool-read-success-behavioral"));
+    assert_eq!(nested.get("requested_tool_name").and_then(|v| v.as_str()), Some("read_file"));
+    assert_eq!(nested.get("dispatch_tool_name").and_then(|v| v.as_str()), Some("read_file"));
+    assert_eq!(nested.get("status").and_then(|v| v.as_str()), Some("success"));
+    assert_eq!(nested.get("is_error").and_then(|v| v.as_bool()), Some(false));
+}
+
+#[tokio::test]
+async fn execute_tool_records_behavioral_event_for_error_outcome() {
+    let root = tempdir().expect("tempdir should succeed");
+    let manager = SessionManager::new_test(root.path()).await;
+    let engine = AgentEngine::new_test(manager.clone(), AgentConfig::default(), root.path()).await;
+    let (event_tx, _) = broadcast::channel(8);
+
+    let result = execute_tool(
+        &ToolCall::with_default_weles_review(
+            "tool-read-error-behavioral".to_string(),
+            ToolFunction {
+                name: "read_file".to_string(),
+                arguments: serde_json::json!({
+                    "path": root.path().join("missing-file.txt"),
+                    "limit": 20,
+                })
+                .to_string(),
+            },
+        ),
+        &engine,
+        "thread-tool-error",
+        None,
+        &manager,
+        None,
+        &event_tx,
+        root.path(),
+        &engine.http_client,
+        None,
+    )
+    .await;
+
+    assert!(result.is_error, "missing file should fail");
+
+    let events = engine
+        .history
+        .list_agent_events(Some("behavioral"), Some("thread-tool-error"), Some(20))
+        .await
+        .expect("behavioral events should list");
+    let row = events
+        .into_iter()
+        .find(|row| row.kind == "tool_execution_outcome")
+        .expect("tool execution outcome event should exist");
+    let payload: serde_json::Value =
+        serde_json::from_str(&row.payload_json).expect("behavioral payload should be valid json");
+    assert_eq!(payload.get("thread_id").and_then(|v| v.as_str()), Some("thread-tool-error"));
+    let nested = payload.get("payload").expect("payload envelope should contain payload field");
+    assert_eq!(nested.get("tool_call_id").and_then(|v| v.as_str()), Some("tool-read-error-behavioral"));
+    assert_eq!(nested.get("requested_tool_name").and_then(|v| v.as_str()), Some("read_file"));
+    assert_eq!(nested.get("dispatch_tool_name").and_then(|v| v.as_str()), Some("read_file"));
+    assert_eq!(nested.get("status").and_then(|v| v.as_str()), Some("error"));
+    assert_eq!(nested.get("is_error").and_then(|v| v.as_bool()), Some(true));
+}

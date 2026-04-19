@@ -1,5 +1,7 @@
 use super::*;
 
+const TASK_APPROVAL_REASON_PREFIX: &str = "waiting for operator approval:";
+
 pub(in crate::agent) fn project_task_runs(
     tasks: &[AgentTask],
     sessions: &[amux_protocol::SessionInfo],
@@ -48,6 +50,7 @@ pub(in crate::agent) fn project_task_runs(
                 title: task.title.clone(),
                 description: task.description.clone(),
                 status: task.status,
+                runtime_status: project_run_runtime_status(task),
                 priority: task.priority,
                 progress: task.progress,
                 created_at: task.created_at,
@@ -77,6 +80,75 @@ pub(in crate::agent) fn project_task_runs(
             }
         })
         .collect()
+}
+
+fn project_run_runtime_status(task: &AgentTask) -> AgentRunRuntimeStatus {
+    let reason = normalized_reason(task.blocked_reason.as_deref());
+    let awaiting_approval_id = task.awaiting_approval_id.clone();
+    let next_retry_at = task.next_retry_at;
+    let scheduled_at = task.scheduled_at;
+
+    let kind = match task.status {
+        TaskStatus::Queued => AgentRunRuntimeStatusKind::Queued,
+        TaskStatus::InProgress => AgentRunRuntimeStatusKind::Running,
+        TaskStatus::AwaitingApproval => AgentRunRuntimeStatusKind::AwaitingApproval,
+        TaskStatus::Blocked => blocked_runtime_status_kind(task),
+        TaskStatus::FailedAnalyzing => {
+            if next_retry_at.is_some() {
+                AgentRunRuntimeStatusKind::Retrying
+            } else {
+                AgentRunRuntimeStatusKind::FailedAnalyzing
+            }
+        }
+        TaskStatus::BudgetExceeded => AgentRunRuntimeStatusKind::BudgetExceeded,
+        TaskStatus::Completed => AgentRunRuntimeStatusKind::Completed,
+        TaskStatus::Failed => AgentRunRuntimeStatusKind::Failed,
+        TaskStatus::Cancelled => AgentRunRuntimeStatusKind::Cancelled,
+    };
+
+    AgentRunRuntimeStatus {
+        kind,
+        reason,
+        awaiting_approval_id,
+        next_retry_at,
+        scheduled_at,
+    }
+}
+
+fn blocked_runtime_status_kind(task: &AgentTask) -> AgentRunRuntimeStatusKind {
+    let Some(reason) = task.blocked_reason.as_deref().map(str::trim) else {
+        return AgentRunRuntimeStatusKind::Blocked;
+    };
+    let lower = reason.to_ascii_lowercase();
+
+    if task.awaiting_approval_id.is_some()
+        || lower.starts_with(TASK_APPROVAL_REASON_PREFIX)
+        || lower.contains("awaiting approval")
+        || lower.contains("needs user approval")
+        || lower.contains("supervised acknowledgment")
+    {
+        AgentRunRuntimeStatusKind::AwaitingApproval
+    } else if lower.starts_with("waiting for dependencies:") {
+        AgentRunRuntimeStatusKind::WaitingForDependencies
+    } else if lower.starts_with("waiting for subagents:") {
+        AgentRunRuntimeStatusKind::WaitingForSubagents
+    } else if lower.starts_with("scheduled for ") {
+        AgentRunRuntimeStatusKind::Scheduled
+    } else if lower.starts_with("waiting for lane availability:")
+        || lower.starts_with("waiting for subagent slot:")
+        || lower.starts_with("waiting for workspace lock:")
+    {
+        AgentRunRuntimeStatusKind::WaitingForResources
+    } else {
+        AgentRunRuntimeStatusKind::Blocked
+    }
+}
+
+fn normalized_reason(reason: Option<&str>) -> Option<String> {
+    reason
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
 }
 
 pub(in crate::agent) fn classify_task(task: &AgentTask) -> &'static str {

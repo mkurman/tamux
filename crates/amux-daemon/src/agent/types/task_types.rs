@@ -288,6 +288,50 @@ pub enum AgentRunKind {
     Subagent,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AgentRunRuntimeStatusKind {
+    Queued,
+    Running,
+    AwaitingApproval,
+    WaitingForDependencies,
+    WaitingForSubagents,
+    Scheduled,
+    WaitingForResources,
+    Blocked,
+    Retrying,
+    FailedAnalyzing,
+    BudgetExceeded,
+    Completed,
+    Failed,
+    Cancelled,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AgentRunRuntimeStatus {
+    pub kind: AgentRunRuntimeStatusKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub awaiting_approval_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_retry_at: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scheduled_at: Option<u64>,
+}
+
+impl Default for AgentRunRuntimeStatus {
+    fn default() -> Self {
+        Self {
+            kind: AgentRunRuntimeStatusKind::Queued,
+            reason: None,
+            awaiting_approval_id: None,
+            next_retry_at: None,
+            scheduled_at: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentRun {
     pub id: String,
@@ -297,6 +341,8 @@ pub struct AgentRun {
     pub title: String,
     pub description: String,
     pub status: TaskStatus,
+    #[serde(default)]
+    pub runtime_status: AgentRunRuntimeStatus,
     #[serde(default)]
     pub priority: TaskPriority,
     #[serde(default)]

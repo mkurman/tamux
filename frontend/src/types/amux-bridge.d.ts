@@ -191,9 +191,34 @@ declare global {
         | "awaiting_approval"
         | "blocked"
         | "failed_analyzing"
+        | "budget_exceeded"
         | "completed"
         | "failed"
         | "cancelled";
+
+    type AmuxAgentRunRuntimeStatusKind =
+        | "queued"
+        | "running"
+        | "awaiting_approval"
+        | "waiting_for_dependencies"
+        | "waiting_for_subagents"
+        | "scheduled"
+        | "waiting_for_resources"
+        | "blocked"
+        | "retrying"
+        | "failed_analyzing"
+        | "budget_exceeded"
+        | "completed"
+        | "failed"
+        | "cancelled";
+
+    type AmuxAgentRunRuntimeStatus = {
+        kind: AmuxAgentRunRuntimeStatusKind;
+        reason?: string | null;
+        awaiting_approval_id?: string | null;
+        next_retry_at?: number | null;
+        scheduled_at?: number | null;
+    };
 
     type AmuxAgentRunPriority = "low" | "normal" | "high" | "urgent";
 
@@ -205,6 +230,7 @@ declare global {
         title: string;
         description: string;
         status: AmuxAgentRunStatus;
+        runtime_status?: AmuxAgentRunRuntimeStatus | null;
         priority: AmuxAgentRunPriority;
         progress: number;
         created_at: number;

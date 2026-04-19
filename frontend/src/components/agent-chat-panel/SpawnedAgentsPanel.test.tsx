@@ -13,6 +13,9 @@ function makeRun(overrides: Partial<AgentRun> = {}): AgentRun {
     title: "Root Agent",
     description: "Inspect the spawned agent",
     status: "in_progress",
+    runtime_status: {
+      kind: "running",
+    },
     priority: "normal",
     progress: 50,
     created_at: 1,
@@ -48,6 +51,10 @@ describe("SpawnedAgentsPanel", () => {
       thread_id: null,
       session_id: "session-waiting",
       status: "queued",
+      runtime_status: {
+        kind: "waiting_for_dependencies",
+        reason: "waiting for dependencies: task-anchor",
+      },
       parent_task_id: "task-anchor",
       parent_thread_id: "daemon-root",
       created_at: 3,
@@ -95,6 +102,8 @@ describe("SpawnedAgentsPanel", () => {
     expect(html).toContain("Root Agent");
     expect(html).toContain("Spawned Child");
     expect(html).toContain("Waiting Child");
+    expect(html).toContain("Waiting for dependencies");
+    expect(html).toContain("waiting for dependencies: task-anchor");
     expect(html).toContain("claude-code");
     expect(html).toContain("session-child");
     expect(html).toContain('aria-label="Open chat for Waiting Child"');

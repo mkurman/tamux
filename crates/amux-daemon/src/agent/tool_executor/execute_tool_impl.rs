@@ -318,6 +318,94 @@ async fn maybe_emit_successful_shell_synthesis_proposal_notice(
     .await;
 }
 
+fn weles_verdict_label(verdict: crate::agent::types::WelesVerdict) -> &'static str {
+    match verdict {
+        crate::agent::types::WelesVerdict::Allow => "allow",
+        crate::agent::types::WelesVerdict::Block => "block",
+        crate::agent::types::WelesVerdict::FlagOnly => "flag_only",
+    }
+}
+
+fn governance_class_label(
+    class: crate::agent::weles_governance::WelesGovernanceClass,
+) -> &'static str {
+    match class {
+        crate::agent::weles_governance::WelesGovernanceClass::AllowDirect => "allow_direct",
+        crate::agent::weles_governance::WelesGovernanceClass::GuardIfSuspicious => {
+            "guard_if_suspicious"
+        }
+        crate::agent::weles_governance::WelesGovernanceClass::GuardAlways => "guard_always",
+        crate::agent::weles_governance::WelesGovernanceClass::RejectBypass => "reject_bypass",
+    }
+}
+
+async fn emit_tool_execution_outcome_event(
+    agent: &AgentEngine,
+    thread_id: &str,
+    task_id: Option<&str>,
+    tool_call_id: &str,
+    requested_tool_name: &str,
+    dispatch_tool_name: Option<&str>,
+    governance_class: Option<crate::agent::weles_governance::WelesGovernanceClass>,
+    critique_session_id: Option<&str>,
+    result: &ToolResult,
+) {
+    let (goal_run_id, step_index, session_id) = agent.goal_context_for_task(task_id).await;
+    let status = if result.pending_approval.is_some() {
+        "pending_approval"
+    } else if result.is_error {
+        "error"
+    } else {
+        "success"
+    };
+    let approval_id = result
+        .pending_approval
+        .as_ref()
+        .map(|approval| approval.approval_id.as_str());
+    let payload = serde_json::json!({
+        "tool_call_id": tool_call_id,
+        "requested_tool_name": requested_tool_name,
+        "dispatch_tool_name": dispatch_tool_name,
+        "status": status,
+        "is_error": result.is_error,
+        "content_bytes": result.content.len(),
+        "pending_approval_id": approval_id,
+        "weles_reviewed": result
+            .weles_review
+            .as_ref()
+            .map(|review| review.weles_reviewed)
+            .unwrap_or(false),
+        "governance_verdict": result
+            .weles_review
+            .as_ref()
+            .map(|review| weles_verdict_label(review.verdict)),
+        "governance_class": governance_class.map(governance_class_label),
+        "critique_session_id": critique_session_id,
+        "session_id": session_id,
+        "step_index": step_index,
+    });
+
+    if let Err(error) = agent
+        .record_behavioral_event(
+            "tool_execution_outcome",
+            super::BehavioralEventContext {
+                thread_id: (!thread_id.trim().is_empty()).then_some(thread_id),
+                task_id,
+                goal_run_id: goal_run_id.as_deref(),
+                approval_id,
+            },
+            payload,
+        )
+        .await
+    {
+        tracing::warn!(
+            tool = %requested_tool_name,
+            error = %error,
+            "failed to persist tool execution outcome behavioral event"
+        );
+    }
+}
+
 async fn maybe_emit_openapi_synthesis_proposal_notice(
     agent: &AgentEngine,
     event_tx: &broadcast::Sender<AgentEvent>,
@@ -1960,7 +2048,21 @@ pub fn execute_tool<'a>(
         let prepared =
             match Box::pin(prepare_tool_execution(tool_call, agent, thread_id, task_id)).await {
                 Ok(prepared) => prepared,
-                Err(result) => return result,
+                Err(result) => {
+                    emit_tool_execution_outcome_event(
+                        agent,
+                        thread_id,
+                        task_id,
+                        &tool_call.id,
+                        tool_call.function.name.as_str(),
+                        None,
+                        None,
+                        None,
+                        &result,
+                    )
+                    .await;
+                    return result;
+                }
             };
 
         let tool_domain =
@@ -2046,14 +2148,27 @@ pub fn execute_tool<'a>(
                     .await;
                 }
                 tracing::info!(tool = %prepared.tool_name, result_len = content.len(), "agent tool result: ok");
-                ToolResult {
+                let result = ToolResult {
                     tool_call_id: tool_call.id.clone(),
                     name: tool_call.function.name.clone(),
                     content,
                     is_error: false,
                     weles_review: Some(review),
                     pending_approval,
-                }
+                };
+                emit_tool_execution_outcome_event(
+                    agent,
+                    thread_id,
+                    task_id,
+                    &tool_call.id,
+                    tool_call.function.name.as_str(),
+                    Some(prepared.dispatch_tool_name.as_str()),
+                    Some(prepared.governance_decision.class),
+                    prepared.critique_session_id.as_deref(),
+                    &result,
+                )
+                .await;
+                result
             }
             Err(e) => {
                 let content = scrub_sensitive(&format!("Error: {e}"));
@@ -2066,14 +2181,27 @@ pub fn execute_tool<'a>(
                     &prepared.critique_adjustments,
                     prepared.critique_report_summary.as_deref(),
                 );
-                ToolResult {
+                let result = ToolResult {
                     tool_call_id: tool_call.id.clone(),
                     name: tool_call.function.name.clone(),
                     content,
                     is_error: true,
                     weles_review: Some(review),
                     pending_approval: None,
-                }
+                };
+                emit_tool_execution_outcome_event(
+                    agent,
+                    thread_id,
+                    task_id,
+                    &tool_call.id,
+                    tool_call.function.name.as_str(),
+                    Some(prepared.dispatch_tool_name.as_str()),
+                    Some(prepared.governance_decision.class),
+                    prepared.critique_session_id.as_deref(),
+                    &result,
+                )
+                .await;
+                result
             }
         }
     })
