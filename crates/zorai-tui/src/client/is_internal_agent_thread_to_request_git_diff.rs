@@ -17,7 +17,7 @@ impl DaemonClient {
         normalized_id.starts_with("dm:") || normalized_title.starts_with("internal dm")
     }
 
-    fn is_hidden_agent_thread(thread_id: Option<&str>, title: Option<&str>) -> bool {
+    pub(crate) fn is_hidden_agent_thread(thread_id: Option<&str>, title: Option<&str>) -> bool {
         let normalized_id = thread_id.unwrap_or_default().trim().to_ascii_lowercase();
         let normalized_title = title.unwrap_or_default().trim().to_ascii_lowercase();
         normalized_id.starts_with("handoff:")
@@ -26,7 +26,7 @@ impl DaemonClient {
             || normalized_title.starts_with("weles ")
     }
 
-    fn parse_weles_review(event: &Value) -> Option<crate::client::WelesReviewMetaVm> {
+    pub(crate) fn parse_weles_review(event: &Value) -> Option<crate::client::WelesReviewMetaVm> {
         let review = event.get("weles_review")?;
         let verdict = review.get("verdict").and_then(Value::as_str)?.to_string();
         let reasons = review
@@ -53,11 +53,11 @@ impl DaemonClient {
     }
 
     pub(crate) async fn dispatch_agent_event(event: Value, event_tx: &mpsc::Sender<ClientEvent>) {
-        let Some(kind) = event.get("type").and_then(Value::as_str) else {
+        let Some(kind) = event.get("type").and_then(Value::as_str).map(ToOwned::to_owned) else {
             return;
         };
 
-        include!("dispatch_match.rs");
+        Self::dispatch_match_arms(&kind, event, event_tx).await;
     }
 
     pub(crate) fn send(&self, request: ClientMessage) -> Result<()> {
