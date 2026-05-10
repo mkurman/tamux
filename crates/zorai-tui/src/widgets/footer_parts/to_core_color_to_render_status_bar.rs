@@ -304,6 +304,7 @@ fn render_attachments(
             format!("{} B", att.size_bytes)
         };
         lines.push(Line::from(vec![
+            Span::styled("× ", theme.fg_dim),
             Span::styled("📎 ", theme.accent_secondary),
             Span::styled(att.filename.clone(), theme.fg_active),
             Span::styled(format!(" ({size_str})"), theme.fg_dim),

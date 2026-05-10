@@ -1,28 +1,19 @@
-use super::*;
 
-use anyhow::Result;
-use futures::{SinkExt, StreamExt};
 use serde::Deserialize;
 use serde_json::Value;
 use std::sync::Mutex;
-use std::time::Duration;
 use tokio::sync::mpsc;
-use tokio::time::{Instant, MissedTickBehavior};
-use tokio_util::codec::Framed;
-use tracing::{debug, error, info, warn};
 
 #[cfg(not(unix))]
 use zorai_protocol::default_tcp_addr;
-use zorai_protocol::{ClientMessage, DaemonMessage, ZoraiCodec};
+use zorai_protocol::ClientMessage;
 
 use crate::wire::{
     AgentConfigSnapshot, AgentTask, AgentThread, AnticipatoryItem, CheckpointSummary, FetchedModel,
-    GoalRun, GoalRunStatus, HeartbeatItem, RestoreOutcome, TaskStatus, ThreadParticipantSuggestion,
+    GoalRun, HeartbeatItem, ThreadParticipantSuggestion,
     ThreadWorkContext,
 };
 
-#[cfg(unix)]
-use tokio::net::UnixStream;
 
 #[derive(Debug, Clone)]
 pub struct WelesReviewMetaVm {

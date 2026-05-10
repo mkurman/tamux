@@ -1,7 +1,5 @@
 use super::super::*;
 use super::workspace_board_hit_test_tracks::*;
-use crate::state::workspace::WorkspaceState;
-use ratatui::backend::TestBackend;
 use ratatui::layout::{Position, Rect};
 use zorai_protocol::WorkspaceTaskStatus;
 

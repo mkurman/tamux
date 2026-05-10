@@ -10,7 +10,7 @@ pub use to_core_color_to_render_status_bar::*;
 #[cfg(test)]
 #[path = "footer_tests_parts"]
 mod tests {
-    use super::*;
+    
 
     mod footer_handles_empty_state_to_status_bar_shows_playing_indicator;
 }

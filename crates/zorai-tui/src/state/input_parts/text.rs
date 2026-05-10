@@ -1,5 +1,3 @@
-use ratatui_textarea::{CursorMove, TextArea};
-use unicode_width::UnicodeWidthChar;
 
 use super::InputState;
 

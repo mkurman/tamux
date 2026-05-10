@@ -5,7 +5,6 @@ use ratatui::prelude::*;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use std::collections::HashSet;
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 use zorai_protocol::WorkspaceTaskStatus;
 
 pub(crate) const TASK_COLLAPSED_ROW_HEIGHT: u16 = 7;

@@ -7,7 +7,7 @@ use crate::agent::types::SkillRecommendationConfig;
 use crate::history::{
     derive_skill_metadata, GuidelineDocumentRecord, HistoryStore, SkillVariantRecord,
 };
-use anyhow::{Context, Result};
+use anyhow::Result;
 use base64::Engine;
 use ranking::{rank_skill_candidates, rank_skill_candidates_with_semantic_scores};
 use std::collections::{HashMap, HashSet, VecDeque};

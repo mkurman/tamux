@@ -1,17 +1,4 @@
 use super::*;
-use crate::client::ClientEvent;
-use crate::providers;
-use crate::state::*;
-use crate::theme::ThemeTokens;
-use crate::widgets;
-use crossterm::event::{
-    KeyCode, KeyModifiers, ModifierKeyCode, MouseButton, MouseEvent, MouseEventKind,
-};
-use ratatui::prelude::*;
-use ratatui::widgets::{Block, BorderType, Borders, Clear};
-use std::process::Child;
-use std::sync::mpsc::Receiver;
-use tokio::sync::mpsc::UnboundedSender;
 impl TuiModel {
     pub(crate) fn send_continue_message(&mut self, thread_id: String) {
         self.send_daemon_command(DaemonCommand::SendMessage {

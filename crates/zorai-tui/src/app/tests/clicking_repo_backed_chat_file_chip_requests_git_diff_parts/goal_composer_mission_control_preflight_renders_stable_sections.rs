@@ -1,10 +1,6 @@
 use super::*;
-use crate::state::*;
-use crate::app::*;
-use crate::app::tests::goal_sidebar_tab_cycling_stays_to_collaboration_mouse_clicks_select_rows::goal_sidebar_tab_cycling_stays_mod::*;
-use super::super::{build_model, rendered_chat_area, unauthenticated_entry, unbounded_channel};
+use super::super::build_model;
 use ratatui::backend::TestBackend;
-use std::sync::mpsc;
 #[test]
 fn goal_composer_mission_control_preflight_renders_stable_sections() {
     let mut model = build_model();

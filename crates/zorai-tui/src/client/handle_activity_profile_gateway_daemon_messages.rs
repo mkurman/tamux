@@ -1,11 +1,8 @@
 use super::*;
-use crate::client::ThreadDetailChunkBuffer;
 use crate::client::{ClientEvent, DaemonClient};
-use crate::wire::*;
 use serde_json::Value;
 use tokio::sync::mpsc;
-use tracing::{debug, info, warn};
-use zorai_protocol::ClientMessage;
+use tracing::{debug, warn};
 use zorai_protocol::DaemonMessage;
 
 pub(crate) async fn dispatch_client_event(

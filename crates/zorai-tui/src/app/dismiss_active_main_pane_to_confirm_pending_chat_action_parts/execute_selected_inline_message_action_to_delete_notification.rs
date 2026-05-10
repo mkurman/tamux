@@ -1,17 +1,8 @@
 use super::*;
-use crate::client::ClientEvent;
-use crate::providers;
-use crate::state::*;
-use crate::theme::ThemeTokens;
 use crate::widgets;
 use crossterm::event::{
-    KeyCode, KeyModifiers, ModifierKeyCode, MouseButton, MouseEvent, MouseEventKind,
+    KeyCode, KeyModifiers, ModifierKeyCode,
 };
-use ratatui::prelude::*;
-use ratatui::widgets::{Block, BorderType, Borders, Clear};
-use std::process::Child;
-use std::sync::mpsc::Receiver;
-use tokio::sync::mpsc::UnboundedSender;
 impl TuiModel {
     pub(crate) fn execute_selected_inline_message_action(&mut self) -> bool {
         let Some(message_index) = self.chat.selected_message() else {

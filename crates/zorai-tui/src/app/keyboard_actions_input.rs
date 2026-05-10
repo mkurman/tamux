@@ -1,17 +1,7 @@
 use super::*;
-use crate::client::ClientEvent;
-use crate::providers;
-use crate::state::*;
-use crate::theme::ThemeTokens;
-use crate::widgets;
 use crossterm::event::{
-    KeyCode, KeyModifiers, ModifierKeyCode, MouseButton, MouseEvent, MouseEventKind,
+    KeyCode, KeyModifiers,
 };
-use ratatui::prelude::*;
-use ratatui::widgets::{Block, BorderType, Borders, Clear};
-use std::process::Child;
-use std::sync::mpsc::Receiver;
-use tokio::sync::mpsc::UnboundedSender;
 impl TuiModel {
     pub(super) fn handle_input_key_action(
         &mut self,
@@ -41,6 +31,17 @@ impl TuiModel {
             KeyCode::Enter => {
                 return Some(self.handle_enter_key(modifiers));
             }
+            KeyCode::Backspace
+                if (ctrl && modifiers.contains(KeyModifiers::SHIFT))
+                    || modifiers.contains(KeyModifiers::ALT) =>
+            {
+                if self.focus == FocusArea::Input && !self.attachments.is_empty() {
+                    let removed = self.attachments.len();
+                    self.attachments.clear();
+                    self.status_line = format!("Cleared {removed} attachment(s)");
+                }
+                Some(false)
+            }
             KeyCode::Backspace if ctrl => {
                 {
                     if self.focus == FocusArea::Input {
@@ -58,11 +59,20 @@ impl TuiModel {
             KeyCode::Backspace => {
                 {
                     if self.focus == FocusArea::Input {
-                        self.input.reduce(input::InputAction::Backspace);
-                        if self.modal.top() == Some(modal::ModalKind::CommandPalette) {
-                            self.modal.reduce(modal::ModalAction::SetQuery(
-                                self.input.buffer().to_string(),
-                            ));
+                        if self.input.buffer().is_empty()
+                            && !self.attachments.is_empty()
+                            && self.modal.top() != Some(modal::ModalKind::CommandPalette)
+                        {
+                            if let Some(att) = self.attachments.pop() {
+                                self.status_line = format!("Removed: {}", att.filename);
+                            }
+                        } else {
+                            self.input.reduce(input::InputAction::Backspace);
+                            if self.modal.top() == Some(modal::ModalKind::CommandPalette) {
+                                self.modal.reduce(modal::ModalAction::SetQuery(
+                                    self.input.buffer().to_string(),
+                                ));
+                            }
                         }
                     }
                 };

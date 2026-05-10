@@ -1,17 +1,7 @@
-use super::clicking_footer_queue_indicator_opens_queued_prompts_modal::sample_notification;
-use super::thread_picker_playgrounds_new_row_is_browse_only_to_slash_effort_updates::seed_active_weles_thread;
 use super::*;
-use crate::app::*;
-use crate::state::*;
 use ratatui::backend::TestBackend;
-use ratatui::layout::Rect;
 use ratatui::Terminal;
 use tokio::sync::mpsc::unbounded_channel;
-use zorai_shared::providers::{
-    AudioToolKind, PROVIDER_ID_ALIBABA_CODING_PLAN, PROVIDER_ID_AZURE_OPENAI, PROVIDER_ID_CHUTES,
-    PROVIDER_ID_CUSTOM, PROVIDER_ID_DEEPSEEK, PROVIDER_ID_OPENAI, PROVIDER_ID_OPENROUTER,
-    PROVIDER_ID_QWEN, PROVIDER_ID_XAI,
-};
 
 pub(super) fn make_model() -> (
     TuiModel,

@@ -1,34 +1,18 @@
-use super::super::*;
 use super::super::{
-    adapted_timeout_override_for_mode, build_list_files_script, build_write_file_command,
-    build_write_file_script, command_looks_interactive, command_matches_policy_risk,
-    command_requires_managed_state, daemon_tool_timeout_seconds, default_timeout_seconds_for_tool,
-    execute_apply_patch, execute_create_file, execute_fetch_url_with_runner,
-    execute_gateway_message, execute_get_debate_session, execute_get_divergent_session,
-    execute_get_git_line_statuses, execute_headless_shell_command,
-    execute_onecontext_search_with_runner, execute_read_file, execute_run_debate,
-    execute_search_files_with_runner, execute_tool, execute_web_search_with_runner,
-    get_available_tools, get_file_path_arg, managed_alias_args, parse_capture_output,
-    parse_tool_args, resolve_skill_path, run_search_files_command,
-    should_use_linked_whatsapp_transport, should_use_managed_execution, validate_read_path,
-    validate_write_path, wait_for_managed_command_outcome,
+    adapted_timeout_override_for_mode, daemon_tool_timeout_seconds, default_timeout_seconds_for_tool, execute_create_file,
+    execute_get_git_line_statuses,
+    execute_onecontext_search_with_runner, execute_read_file, execute_tool,
+    get_available_tools, get_file_path_arg,
 };
-use super::part7::*;
 use crate::agent::{
     types::{AgentConfig, AgentEvent, ToolCall, ToolFunction},
     AgentEngine,
 };
-use crate::history::SkillVariantRecord;
 use crate::session_manager::SessionManager;
-use base64::Engine;
-use std::fs;
 use std::sync::{Arc, Mutex};
 use tempfile::tempdir;
 use tokio::sync::broadcast;
 use tokio::time::{timeout, Duration};
-use tokio_util::sync::CancellationToken;
-use zorai_protocol::tool_names;
-use zorai_protocol::{DaemonMessage, GatewaySendResult, SessionId};
 
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;

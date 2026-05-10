@@ -1,18 +1,14 @@
 use super::scroll_offset_from_thumb_offset_to_file_preview_cache_key::*;
-use super::syntax_highlighting::*;
 use crate::app::ChatFilePreviewTarget;
 use crate::state::task::TaskState;
 use crate::terminal_graphics::{active_protocol, TerminalImageOverlaySpec, TerminalImageProtocol};
 use crate::theme::ThemeTokens;
 use crate::widgets::image_preview;
-use crate::widgets::message::{render_markdown_pub, wrap_text};
-use crate::widgets::tool_diff::render_unified_diff;
 use ratatui::prelude::*;
-use ratatui::style::{Modifier, Style};
+use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
-use std::sync::{Arc, Mutex, OnceLock};
-use unicode_width::UnicodeWidthChar;
+use std::sync::Arc;
 
 pub(super) fn build_cached_lines(
     area: Rect,

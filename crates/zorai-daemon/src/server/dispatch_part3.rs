@@ -2,12 +2,9 @@ use super::*;
 use crate::agent::AgentEngine;
 use crate::session_manager::SessionManager;
 use anyhow::Result;
-use futures::SinkExt;
 use std::collections::HashSet;
 use std::sync::Arc;
-use tokio::io::{AsyncRead, AsyncWrite};
-use tokio_util::codec::Framed;
-use zorai_protocol::{ClientMessage, DaemonCodec, DaemonMessage};
+use zorai_protocol::{ClientMessage, DaemonMessage};
 
 pub(crate) async fn dispatch_part3(
     msg: &ClientMessage,

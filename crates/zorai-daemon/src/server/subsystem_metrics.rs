@@ -2,18 +2,18 @@ use super::*;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
-pub(super) struct BackgroundSubsystemMetricsSnapshot {
-    pub(super) current_depth: usize,
-    pub(super) max_depth: usize,
-    pub(super) rejection_count: u64,
-    pub(super) accepted_count: u64,
-    pub(super) started_count: u64,
-    pub(super) completed_count: u64,
-    pub(super) failed_count: u64,
-    pub(super) accepted_to_started_samples: u64,
-    pub(super) started_to_terminal_samples: u64,
-    pub(super) last_accepted_to_started_ms: Option<u64>,
-    pub(super) last_started_to_terminal_ms: Option<u64>,
+pub(crate) struct BackgroundSubsystemMetricsSnapshot {
+    pub(crate) current_depth: usize,
+    pub(crate) max_depth: usize,
+    pub(crate) rejection_count: u64,
+    pub(crate) accepted_count: u64,
+    pub(crate) started_count: u64,
+    pub(crate) completed_count: u64,
+    pub(crate) failed_count: u64,
+    pub(crate) accepted_to_started_samples: u64,
+    pub(crate) started_to_terminal_samples: u64,
+    pub(crate) last_accepted_to_started_ms: Option<u64>,
+    pub(crate) last_started_to_terminal_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -24,20 +24,20 @@ struct OperationTimingState {
 }
 
 #[derive(Default)]
-pub(super) struct BackgroundSubsystemMetrics {
+pub(crate) struct BackgroundSubsystemMetrics {
     per_subsystem: std::sync::Mutex<
         std::collections::HashMap<BackgroundSubsystem, BackgroundSubsystemMetricsSnapshot>,
     >,
     inflight_operations: std::sync::Mutex<std::collections::HashMap<String, OperationTimingState>>,
 }
 
-pub(super) fn subsystem_metrics() -> &'static BackgroundSubsystemMetrics {
+pub(crate) fn subsystem_metrics() -> &'static BackgroundSubsystemMetrics {
     static METRICS: std::sync::OnceLock<BackgroundSubsystemMetrics> = std::sync::OnceLock::new();
     METRICS.get_or_init(BackgroundSubsystemMetrics::default)
 }
 
 impl BackgroundSubsystemMetrics {
-    pub(super) fn snapshot_for(
+    pub(crate) fn snapshot_for(
         &self,
         subsystem: BackgroundSubsystem,
     ) -> BackgroundSubsystemMetricsSnapshot {
@@ -49,7 +49,7 @@ impl BackgroundSubsystemMetrics {
             .unwrap_or_default()
     }
 
-    pub(super) fn all_snapshots_json(&self) -> String {
+    pub(crate) fn all_snapshots_json(&self) -> String {
         let mut json = serde_json::Map::new();
         for subsystem in BackgroundSubsystem::ALL {
             json.insert(
@@ -60,7 +60,7 @@ impl BackgroundSubsystemMetrics {
         serde_json::Value::Object(json).to_string()
     }
 
-    pub(super) fn record_depth(&self, subsystem: BackgroundSubsystem, depth: usize) {
+    pub(crate) fn record_depth(&self, subsystem: BackgroundSubsystem, depth: usize) {
         let mut metrics = self
             .per_subsystem
             .lock()
@@ -70,7 +70,7 @@ impl BackgroundSubsystemMetrics {
         snapshot.max_depth = snapshot.max_depth.max(depth);
     }
 
-    pub(super) fn record_rejection(&self, subsystem: BackgroundSubsystem) {
+    pub(crate) fn record_rejection(&self, subsystem: BackgroundSubsystem) {
         let mut metrics = self
             .per_subsystem
             .lock()
@@ -79,7 +79,7 @@ impl BackgroundSubsystemMetrics {
         snapshot.rejection_count = snapshot.rejection_count.saturating_add(1);
     }
 
-    pub(super) fn record_operation_accepted(&self, kind: &str, operation_id: &str) {
+    pub(crate) fn record_operation_accepted(&self, kind: &str, operation_id: &str) {
         let Some(subsystem) = subsystem_for_operation_kind(kind) else {
             return;
         };
@@ -106,7 +106,7 @@ impl BackgroundSubsystemMetrics {
             );
     }
 
-    pub(super) fn record_operation_started(&self, operation_id: &str) {
+    pub(crate) fn record_operation_started(&self, operation_id: &str) {
         let mut inflight = self
             .inflight_operations
             .lock()
@@ -129,7 +129,7 @@ impl BackgroundSubsystemMetrics {
         snapshot.last_accepted_to_started_ms = Some(elapsed_ms);
     }
 
-    pub(super) fn record_operation_terminal(&self, operation_id: &str, failed: bool) {
+    pub(crate) fn record_operation_terminal(&self, operation_id: &str, failed: bool) {
         let mut inflight = self
             .inflight_operations
             .lock()
@@ -160,7 +160,7 @@ impl BackgroundSubsystemMetrics {
     }
 
     #[cfg(test)]
-    pub(super) fn reset_for_tests(&self) {
+    pub(crate) fn reset_for_tests(&self) {
         self.per_subsystem
             .lock()
             .expect("subsystem metrics mutex poisoned")
@@ -173,7 +173,7 @@ impl BackgroundSubsystemMetrics {
 }
 
 impl BackgroundSubsystem {
-    pub(super) fn metric_key(self) -> &'static str {
+    pub(crate) fn metric_key(self) -> &'static str {
         match self {
             BackgroundSubsystem::ConciergeWork => "concierge_work",
             BackgroundSubsystem::AgentWork => "agent_work",

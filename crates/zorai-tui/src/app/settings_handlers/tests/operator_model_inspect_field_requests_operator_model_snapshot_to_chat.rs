@@ -1,9 +1,6 @@
 use super::whatsapp_link_device_probes_status_before_starting_link_flow::focus_settings_field;
 use super::*;
-use super::{
-    auth_env_lock, has_provider_auth_row, make_model, unique_test_db_path, write_provider_auth_row,
-    EnvGuard,
-};
+use super::make_model;
 #[test]
 fn operator_model_inspect_field_requests_operator_model_snapshot() {
     let (mut model, mut daemon_rx) = make_model();

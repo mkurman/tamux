@@ -1,8 +1,5 @@
 use super::idle_tick_does_not_request_redraw_to_first_raw_config_load_triggers::*;
 use crate::app::*;
-use crate::state::*;
-use std::sync::mpsc;
-use tokio::sync::mpsc::unbounded_channel;
 use zorai_shared::providers::*;
 #[test]
 fn done_event_persists_final_reasoning_into_chat_message() {

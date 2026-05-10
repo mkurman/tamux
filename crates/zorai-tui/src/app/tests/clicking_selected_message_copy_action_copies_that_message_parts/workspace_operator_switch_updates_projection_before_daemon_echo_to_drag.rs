@@ -1,10 +1,7 @@
 use super::*;
-use crate::state::*;
-use crate::app::*;
 use crate::app::tests::goal_sidebar_tab_cycling_stays_to_collaboration_mouse_clicks_select_rows::goal_sidebar_tab_cycling_stays_mod::*;
 use crate::app::tests::clicking_selected_message_copy_action_copies_that_message_to_click::in_review_open_action_opens_queued_review_task_thread_to_workspace::*;
-use super::super::{build_model, rendered_chat_area, unauthenticated_entry, unbounded_channel};
-use ratatui::backend::TestBackend;
+use super::super::{build_model, unbounded_channel};
 use std::sync::mpsc;
 #[test]
 fn workspace_operator_switch_updates_projection_before_daemon_echo() {

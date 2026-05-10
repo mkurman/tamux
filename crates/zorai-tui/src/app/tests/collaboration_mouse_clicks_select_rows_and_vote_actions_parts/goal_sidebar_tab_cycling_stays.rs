@@ -1,12 +1,8 @@
-use super::super::{build_model, rendered_chat_area, unauthenticated_entry, unbounded_channel};
+use super::super::{build_model, rendered_chat_area};
 use super::*;
-use crate::app::*;
-use crate::state::*;
-use crate::test_support::{env_var_lock, EnvVarGuard, ZORAI_DATA_DIR_ENV};
 use ratatui::backend::TestBackend;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc;
 
 pub(super) fn make_temp_dir() -> std::path::PathBuf {
     let dir = std::env::temp_dir().join(format!("zorai-tui-tab-{}", uuid::Uuid::new_v4()));

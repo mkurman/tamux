@@ -1,18 +1,5 @@
 use super::*;
-use crate::client::ClientEvent;
-use crate::providers;
-use crate::state::*;
-use crate::theme::ThemeTokens;
 use crate::widgets;
-use crossterm::event::{
-    KeyCode, KeyModifiers, ModifierKeyCode, MouseButton, MouseEvent, MouseEventKind,
-};
-use ratatui::prelude::*;
-use ratatui::widgets::{Block, BorderType, Borders, Clear};
-use std::process::Child;
-use std::sync::mpsc::Receiver;
-use tokio::sync::mpsc::UnboundedSender;
-use zorai_shared::providers::*;
 impl TuiModel {
     fn active_goal_sidebar_item(&self) -> Option<GoalSidebarCommandItem> {
         let goal_run_id = self.active_goal_sidebar_goal_run()?;

@@ -1,15 +1,8 @@
-use super::super::{auth_env_lock, make_model, unique_test_db_path};
+use super::super::make_model;
 use super::*;
 use crate::app::TuiModel;
 use crate::state::settings::SettingsTab;
-use crate::state::*;
-use crate::widgets;
 use crossterm::event::{KeyCode, KeyModifiers};
-use rusqlite::{params, Connection};
-use std::ffi::OsString;
-use std::path::PathBuf;
-use tokio::sync::mpsc::unbounded_channel;
-use zorai_shared::providers::*;
 #[test]
 fn opening_weles_editor_hides_inherited_main_system_prompt() {
     let (mut model, _daemon_rx) = make_model();

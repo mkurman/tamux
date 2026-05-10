@@ -1,20 +1,14 @@
 use super::super::advanced_single_line_edit_layout_to_subagent_row_action_offsets::*;
-use super::super::render_advanced_value_to_render_advanced_tab::*;
-use super::super::render_edit_buffer_with_cursor_to_editing_cursor_hit_test_to_content::*;
-use super::super::wrap_textarea_visual_line_to_render_wrapped_textarea_buffer_to_render::*;
-use super::*;
 use crate::providers;
 use crate::state::concierge::ConciergeState;
 use crate::state::config::ConfigState;
-use crate::state::modal::{ModalState, WhatsAppLinkPhase};
-use crate::state::settings::{PluginListItem, PluginSettingsState, SettingsState, SettingsTab};
+use crate::state::modal::ModalState;
+use crate::state::settings::{PluginSettingsState, SettingsState, SettingsTab};
 use crate::state::subagents::SubAgentsState;
 use crate::theme::ThemeTokens;
-use crate::widgets::message::wrap_text;
 use ratatui::prelude::*;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Borders, Paragraph};
-use zorai_protocol::has_whatsapp_allowed_contacts;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SettingsHitTarget {
     Tab(SettingsTab),

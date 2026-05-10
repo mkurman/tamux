@@ -1,16 +1,7 @@
 use super::normalize_provider_auth_source_falls_back_for_invalid_values_to_apply::*;
-use crate::app::config_io::helpers::{
-    normalize_compliance_mode, normalize_provider_auth_source, normalize_provider_transport,
-};
-use crate::app::TuiModel;
-use crate::app::*;
-use crate::state::DaemonCommand;
-use crate::state::*;
 use crate::test_support::{env_var_lock, EnvVarGuard, ZORAI_DATA_DIR_ENV};
 use rusqlite::Connection;
-use std::sync::mpsc;
 use tempfile::tempdir;
-use tokio::sync::mpsc::unbounded_channel;
 use zorai_shared::providers::*;
 #[test]
 fn build_config_patch_value_round_trips_daemon_backed_settings() {

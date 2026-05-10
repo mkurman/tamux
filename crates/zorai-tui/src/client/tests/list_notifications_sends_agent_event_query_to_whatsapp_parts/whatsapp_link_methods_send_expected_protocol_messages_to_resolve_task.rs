@@ -1,11 +1,8 @@
 use super::super::drain_request;
-use super::*;
 use crate::client::{ClientEvent, DaemonClient};
-use crate::wire::*;
 use tokio::sync::mpsc;
 use zorai_protocol::{ClientMessage, DaemonMessage};
-use zorai_shared::providers::*;
-use zorai_shared::providers::{PROVIDER_ID_GITHUB_COPILOT, PROVIDER_ID_OPENAI};
+use zorai_shared::providers::PROVIDER_ID_GITHUB_COPILOT;
 
 pub async fn handle_daemon_message_for_test(
     message: DaemonMessage,

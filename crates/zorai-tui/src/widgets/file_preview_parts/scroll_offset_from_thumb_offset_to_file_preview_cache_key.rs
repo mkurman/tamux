@@ -2,7 +2,6 @@ use super::build_cached_lines_to_scrollbar_layout::*;
 use super::syntax_highlighting::*;
 use crate::app::ChatFilePreviewTarget;
 use crate::state::task::TaskState;
-use crate::terminal_graphics::{active_protocol, TerminalImageOverlaySpec, TerminalImageProtocol};
 use crate::theme::ThemeTokens;
 use crate::widgets::image_preview;
 use crate::widgets::message::{render_markdown_pub, wrap_text};
@@ -10,7 +9,6 @@ use crate::widgets::tool_diff::render_unified_diff;
 use ratatui::prelude::*;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
 use std::sync::{Arc, Mutex, OnceLock};
 use unicode_width::UnicodeWidthChar;
 

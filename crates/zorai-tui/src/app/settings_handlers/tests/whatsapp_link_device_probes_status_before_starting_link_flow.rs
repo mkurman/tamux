@@ -1,6 +1,6 @@
 use super::*;
 use super::{
-    auth_env_lock, has_provider_auth_row, make_model, unique_test_db_path, write_provider_auth_row,
+    has_provider_auth_row, write_provider_auth_row,
     EnvGuard,
 };
 #[path = "activating_about_tab_does_not_enter_edit_mode_to_commit_parts/activating_about_tab_does_not_enter_edit_mode_to_commit_subagent_editor.rs"]

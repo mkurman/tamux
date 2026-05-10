@@ -1,15 +1,8 @@
 use super::*;
 use crate::client::ClientEvent;
-use crate::providers;
-use crate::state::*;
 use crate::theme::ThemeTokens;
 use crate::widgets;
-use crossterm::event::{
-    KeyCode, KeyModifiers, ModifierKeyCode, MouseButton, MouseEvent, MouseEventKind,
-};
-use ratatui::prelude::*;
-use ratatui::widgets::{Block, BorderType, Borders, Clear};
-use std::process::Child;
+use crossterm::event::KeyModifiers;
 use std::sync::mpsc::Receiver;
 use tokio::sync::mpsc::UnboundedSender;
 impl TuiModel {

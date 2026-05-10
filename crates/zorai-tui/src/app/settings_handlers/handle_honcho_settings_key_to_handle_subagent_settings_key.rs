@@ -1,11 +1,5 @@
 use super::*;
-use crate::providers;
-use crate::widgets;
-use crossterm::event::{
-    KeyCode, KeyModifiers, ModifierKeyCode, MouseButton, MouseEvent, MouseEventKind,
-};
-use ratatui::prelude::*;
-use zorai_shared::providers::*;
+use crossterm::event::KeyCode;
 impl TuiModel {
     pub(crate) fn handle_honcho_settings_key(&mut self, code: KeyCode) -> bool {
         let Some(editor) = self.config.honcho_editor.as_mut() else {

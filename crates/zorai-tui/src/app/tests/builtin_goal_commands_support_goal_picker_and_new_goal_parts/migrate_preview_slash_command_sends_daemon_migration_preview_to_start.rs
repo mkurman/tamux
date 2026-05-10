@@ -1,8 +1,5 @@
-use super::super::{build_model, rendered_chat_area, unauthenticated_entry, unbounded_channel};
+use super::super::{build_model, unbounded_channel};
 use super::*;
-use crate::app::*;
-use crate::state::*;
-use ratatui::backend::TestBackend;
 use std::sync::mpsc;
 #[test]
 fn migrate_preview_slash_command_sends_daemon_migration_preview() {

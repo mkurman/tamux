@@ -1,41 +1,41 @@
 use super::*;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum OperationTerminalVisibility {
+pub(crate) enum OperationTerminalVisibility {
     UntilProcessExit,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum InterruptedVisibility {
+pub(crate) enum InterruptedVisibility {
     ReconnectOnly,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum OperationDurability {
+pub(crate) enum OperationDurability {
     Ephemeral,
     DesiredStateDurable,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum ShutdownDisposition {
+pub(crate) enum ShutdownDisposition {
     LostOnDaemonStop,
     DesiredStateRemainsNeedsReconcile,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum SupersessionPolicy {
+pub(crate) enum SupersessionPolicy {
     NotEmittedInPhaseTwo,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct OperationRetentionPolicy {
-    pub(super) terminal_visibility: OperationTerminalVisibility,
-    pub(super) interrupted_visibility: InterruptedVisibility,
-    pub(super) survives_process_restart: bool,
-    pub(super) release_dedup_on_terminal: bool,
-    pub(super) durability: OperationDurability,
-    pub(super) accepted_shutdown: ShutdownDisposition,
-    pub(super) started_shutdown: ShutdownDisposition,
-    pub(super) supersession: SupersessionPolicy,
+pub(crate) struct OperationRetentionPolicy {
+    pub(crate) terminal_visibility: OperationTerminalVisibility,
+    pub(crate) interrupted_visibility: InterruptedVisibility,
+    pub(crate) survives_process_restart: bool,
+    pub(crate) release_dedup_on_terminal: bool,
+    pub(crate) durability: OperationDurability,
+    pub(crate) accepted_shutdown: ShutdownDisposition,
+    pub(crate) started_shutdown: ShutdownDisposition,
+    pub(crate) supersession: SupersessionPolicy,
 }
 
 const IN_MEMORY_RECONNECT_ONLY_POLICY: OperationRetentionPolicy = OperationRetentionPolicy {
@@ -60,7 +60,7 @@ const DESIRED_STATE_DURABLE_POLICY: OperationRetentionPolicy = OperationRetentio
     supersession: SupersessionPolicy::NotEmittedInPhaseTwo,
 };
 
-pub(super) fn retention_policy_for_kind(kind: &str) -> OperationRetentionPolicy {
+pub(crate) fn retention_policy_for_kind(kind: &str) -> OperationRetentionPolicy {
     match kind {
         OPERATION_KIND_CONFIG_SET_ITEM
         | OPERATION_KIND_SET_PROVIDER_MODEL

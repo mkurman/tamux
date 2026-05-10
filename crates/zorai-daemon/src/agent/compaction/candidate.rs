@@ -120,7 +120,10 @@ pub(crate) fn compaction_candidate_with_mode(
     let trigger = match mode {
         CompactionCandidateMode::Forced => CompactionTrigger::ManualRequest,
         CompactionCandidateMode::Automatic => {
-            let over_message_limit = active_messages.len() > max_messages;
+            let message_count_gate_enabled =
+                matches!(config.compaction.strategy, CompactionStrategy::Heuristic);
+            let over_message_limit =
+                message_count_gate_enabled && active_messages.len() > max_messages;
             let over_token_limit = estimate_message_tokens(active_messages) > target_tokens;
             match (over_message_limit, over_token_limit) {
                 (false, false) => return None,

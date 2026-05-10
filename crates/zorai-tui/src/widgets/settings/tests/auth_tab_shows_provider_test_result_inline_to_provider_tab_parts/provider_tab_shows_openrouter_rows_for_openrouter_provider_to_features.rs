@@ -1,24 +1,15 @@
-use super::*;
-use crate::state::config::{ConfigAction, ConfigState, FetchedModel};
+use crate::state::config::{ConfigAction, ConfigState};
 use crate::state::modal::ModalState;
 use crate::state::settings::{
-    PluginListItem, PluginSettingsState, SettingsAction, SettingsState, SettingsTab,
+    SettingsAction, SettingsState, SettingsTab,
 };
 use crate::state::subagents::SubAgentsState;
-use crate::state::ProviderAuthEntry;
 use crate::theme::ThemeTokens;
 use crate::widgets::settings::render_tab_content;
-use crate::widgets::settings::{active_tab_index, mask_api_key, visible_tabs};
-use crate::widgets::settings::{render, render_tabs_line};
 use crate::widgets::settings::{
-    render_about_tab, render_advanced_tab, render_agent_tab, render_auth_tab, render_chat_tab,
-    render_concierge_tab, render_features_tab, render_plugins_tab, render_provider_tab,
-    render_tools_tab, render_websearch_tab,
+    render_agent_tab,
+    render_concierge_tab, render_provider_tab,
 };
-use crate::widgets::settings::{render_gateway_tab, tab_hit_test};
-use ratatui::backend::TestBackend;
-use ratatui::layout::Rect;
-use ratatui::Terminal;
 use zorai_shared::providers::*;
 #[test]
 fn provider_tab_shows_openrouter_rows_for_openrouter_provider() {

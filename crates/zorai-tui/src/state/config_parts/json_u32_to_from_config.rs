@@ -1,5 +1,3 @@
-use crate::providers;
-use zorai_shared::providers::PROVIDER_ID_OPENAI;
 
 #[derive(Debug, Clone, Default)]
 pub struct FetchedModelPricing {

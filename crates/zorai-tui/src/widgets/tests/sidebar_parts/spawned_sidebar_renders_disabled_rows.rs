@@ -1,9 +1,8 @@
 use super::super::*;
 use super::sidebar_handles_empty_state_to_spawned_sidebar_tabs_include_spawned::*;
-use crate::state::chat::{AgentMessage, ChatAction, ChatState, MessageRole};
+use crate::state::chat::{ChatAction, ChatState};
 use crate::state::sidebar::SidebarState;
-use crate::state::sidebar::SidebarTab;
-use crate::state::task::{TaskAction, TaskState, TodoItem, TodoStatus};
+use crate::state::task::{TaskAction, TaskState};
 use crate::theme::ThemeTokens;
 use ratatui::backend::TestBackend;
 use ratatui::layout::{Position, Rect};

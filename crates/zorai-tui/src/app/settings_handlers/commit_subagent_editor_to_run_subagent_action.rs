@@ -1,11 +1,5 @@
 use super::*;
 use crate::providers;
-use crate::widgets;
-use crossterm::event::{
-    KeyCode, KeyModifiers, ModifierKeyCode, MouseButton, MouseEvent, MouseEventKind,
-};
-use ratatui::prelude::*;
-use zorai_shared::providers::*;
 impl TuiModel {
     pub(crate) fn commit_subagent_editor(&mut self) {
         let Some(editor) = self.subagents.editor.clone() else {

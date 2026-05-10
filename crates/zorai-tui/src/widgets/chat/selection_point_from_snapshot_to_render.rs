@@ -3,15 +3,10 @@ use super::render_streaming_markdown_to_message_block_style_to_message_action::*
 use super::resolved_scroll_to_highlight_line_range_to_selected_text_to_selection::*;
 use super::*;
 use crate::state::chat::{
-    AgentMessage, ChatHitTarget, ChatState, MessageRole, RetryPhase, TranscriptMode,
+    ChatHitTarget, ChatState, MessageRole, RetryPhase,
 };
 use crate::theme::ThemeTokens;
-use crate::widgets::message::wrap_text;
-use ratatui::prelude::*;
-use ratatui::style::{Color, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+use unicode_width::UnicodeWidthStr;
 pub(crate) fn selection_point_from_snapshot(
     snapshot: &SelectionSnapshot,
     mouse: Position,
@@ -59,6 +54,7 @@ pub(crate) fn toggle_button_hit(hit: &RenderedChatLine, inner: Rect, mouse: Posi
         && content_col < content_start.saturating_add(TOGGLE_BUTTON_HIT_WIDTH)
 }
 
+#[allow(dead_code)]
 pub fn hit_test(
     area: Rect,
     chat: &ChatState,

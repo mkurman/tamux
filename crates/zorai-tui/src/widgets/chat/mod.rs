@@ -1,13 +1,13 @@
 use ratatui::prelude::*;
-use ratatui::style::{Color, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+use unicode_width::UnicodeWidthStr;
 
-use super::message::wrap_text;
+#[cfg(test)]
+use ratatui::style::Color;
+#[cfg(test)]
 use crate::state::chat::{
-    AgentMessage, ChatHitTarget, ChatState, MessageRole, RetryPhase, TranscriptMode,
+    AgentMessage, ChatHitTarget, ChatState, RetryPhase, TranscriptMode,
 };
+#[cfg(test)]
 use crate::theme::ThemeTokens;
 
 const MESSAGE_PADDING_X: usize = 2;
@@ -36,8 +36,8 @@ pub(crate) use selection_point_from_snapshot_to_render::*;
 mod tests {
     use super::*;
     use crate::state::chat::{AgentThread, ChatAction, MessageRole};
-    use ratatui::backend::TestBackend;
-    use ratatui::Terminal;
+    
+    
 
     fn chat_with_messages(messages: Vec<AgentMessage>) -> ChatState {
         let mut chat = ChatState::new();

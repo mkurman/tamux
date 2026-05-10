@@ -1,9 +1,8 @@
 #![allow(dead_code)]
 
-use ratatui_textarea::{CursorMove, TextArea};
+use ratatui_textarea::TextArea;
 use unicode_width::UnicodeWidthChar;
 
-use crate::state::input_refs;
 
 mod display;
 

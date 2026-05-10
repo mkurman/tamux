@@ -1,14 +1,9 @@
-use super::*;
-use crate::client::get_string_lossy::{get_string, get_string_lossy};
-use crate::client::OpenAICodexAuthStatusVm;
+use crate::client::get_string_lossy::get_string;
 use crate::client::{ClientEvent, DaemonClient};
-use crate::wire::*;
 use anyhow::Result;
 use serde_json::Value;
 use tokio::sync::mpsc;
-use tracing::warn;
 use zorai_protocol::ClientMessage;
-use zorai_protocol::DaemonMessage;
 
 impl DaemonClient {
     fn is_internal_agent_thread(thread_id: Option<&str>, title: Option<&str>) -> bool {

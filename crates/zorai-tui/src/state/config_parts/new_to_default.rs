@@ -2,10 +2,10 @@ use crate::providers;
 use zorai_shared::providers::PROVIDER_ID_OPENAI;
 
 use super::json_u32_to_from_config::{
-    embedding_dimensions_from_fetched_model, json_u32, provider_supports_audio,
-    provider_supports_embeddings, provider_supports_image_generation, setting_name_matches,
+    embedding_dimensions_from_fetched_model, provider_supports_audio,
+    provider_supports_embeddings, provider_supports_image_generation,
 };
-use super::{AgentConfigSnapshot, ConfigAction, ConfigState, FetchedModel, FetchedModelPricing};
+use super::{ConfigAction, ConfigState, FetchedModel};
 
 impl ConfigState {
     pub fn new() -> Self {

@@ -1,17 +1,15 @@
-use super::spawned_agents;
 use super::tab_layout::*;
 use super::*;
 use crate::app::RecentActionVm;
-use crate::state::chat::{ChatState, GatewayStatusVm, MessageRole};
+use crate::state::chat::{ChatState, GatewayStatusVm};
 use crate::state::sidebar::{SidebarState, SidebarTab};
 use crate::state::task::TaskState;
 use crate::state::tier::TierState;
 use crate::theme::ThemeTokens;
 use ratatui::prelude::*;
-use ratatui::style::{Color, Style};
+use ratatui::style::Color;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
-use std::hash::{Hash, Hasher};
 pub(crate) fn render_cached(
     frame: &mut Frame,
     area: Rect,

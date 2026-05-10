@@ -7,8 +7,7 @@ use super::{
 };
 use crate::agent::types::AgentConfig;
 use crate::agent::types::{
-    AgentEvent, AgentMessage, AgentThread, ConciergeAction, ConciergeActionType,
-    ConciergeDetailLevel,
+    AgentEvent, AgentMessage, AgentThread,
 };
 use crate::agent::AgentEngine;
 use crate::agent::{StreamCancellationEntry, StreamProgressKind};
@@ -16,7 +15,6 @@ use crate::history::HistoryStore;
 use crate::plugin::PluginManager;
 use crate::session_manager::SessionManager;
 use futures::{SinkExt, StreamExt};
-use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -24,8 +22,7 @@ use tokio::io::DuplexStream;
 use tokio::task::JoinHandle;
 use tokio::time::{timeout, Duration};
 use zorai_protocol::{
-    ClientMessage, DaemonMessage, GatewayConnectionStatus, GatewayHealthState,
-    GatewayIncomingEvent, GatewayRegistration, GatewaySendRequest, SessionInfo, ZoraiCodec,
+    ClientMessage, DaemonMessage, GatewayRegistration, GatewaySendRequest, ZoraiCodec,
     GATEWAY_IPC_PROTOCOL_VERSION,
 };
 

@@ -378,7 +378,7 @@ impl AgentEngine {
 
         let mut section = String::new();
         let mut remaining = budget_chars;
-        let mut append_block = |section: &mut String, header: &str, items: &[crate::history::ThreadSkillRead], remaining: &mut usize, label: &str| {
+        let append_block = |section: &mut String, header: &str, items: &[crate::history::ThreadSkillRead], remaining: &mut usize, label: &str| {
             if items.is_empty() || *remaining == 0 {
                 return;
             }

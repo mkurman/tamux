@@ -1,12 +1,10 @@
 use super::*;
-use crate::state::workspace::WorkspaceState;
 use crate::theme::ThemeTokens;
 use ratatui::prelude::*;
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, Paragraph};
 use std::collections::HashSet;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
-use zorai_protocol::WorkspaceTaskStatus;
 pub(crate) fn render_column_tasks(
     frame: &mut Frame,
     area: Rect,

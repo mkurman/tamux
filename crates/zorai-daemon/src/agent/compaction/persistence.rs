@@ -85,12 +85,6 @@ impl AgentEngine {
             )
             .await;
         let (artifact, strategy_used, fallback_notice) = artifact_result?;
-        let compaction_payload_for_summary = artifact
-            .compaction_payload
-            .as_deref()
-            .map(str::trim)
-            .filter(|payload| !payload.is_empty())
-            .map(str::to_string);
         let compaction_trigger_summary = build_compaction_visible_content(
             pre_compaction_total_tokens,
             effective_context_window_tokens,
@@ -129,7 +123,7 @@ impl AgentEngine {
                 .sum();
             (current_split_at, thread.messages.len())
         };
-        let displayed_post_compaction_total_tokens = {
+        let _displayed_post_compaction_total_tokens = {
             let threads = self.threads.read().await;
             match threads.get(thread_id) {
                 Some(thread) => {
@@ -139,69 +133,6 @@ impl AgentEngine {
                 None => 0u64,
             }
         };
-        {
-            let mut threads = self.threads.write().await;
-            if let Some(thread) = threads.get_mut(thread_id) {
-                if let Some(removed_artifact) = thread.messages.pop() {
-                    let mode_label = match mode {
-                        CompactionCandidateMode::Automatic => "Auto",
-                        CompactionCandidateMode::Forced => "Manual",
-                    };
-                    let strategy_label = serde_json::to_string(&strategy_used)
-                        .unwrap_or_else(|_| "\"heuristic\"".to_string())
-                        .trim_matches('"')
-                        .to_string();
-                    let summary_header = format!(
-                        "Background operation finished.\n\n{mode_label} compaction applied: ~{pre} \u{2192} ~{post} tokens (target {target}), trigger {trigger}, strategy {strategy_label}. Earlier history collapsed at checkpoint #{split}.",
-                        pre = pre_compaction_total_tokens,
-                        post = displayed_post_compaction_total_tokens,
-                        target = candidate.target_tokens,
-                        trigger = compaction_trigger_detail_value(candidate.trigger),
-                        split = current_split_at,
-                    );
-                    let summary_content = match &compaction_payload_for_summary {
-                        Some(payload) => {
-                            format!("{summary_header}\n\nContent:\n{payload}")
-                        }
-                        None => summary_header,
-                    };
-                    thread.messages.push(crate::agent::types::AgentMessage {
-                        id: generate_message_id(),
-                        role: MessageRole::System,
-                        content: summary_content,
-                        content_blocks: Vec::new(),
-                        tool_calls: None,
-                        tool_call_id: None,
-                        tool_name: None,
-                        tool_arguments: None,
-                        tool_status: None,
-                        weles_review: None,
-                        input_tokens: 0,
-                        output_tokens: 0,
-                        cost: None,
-                        provider: None,
-                        model: None,
-                        api_transport: None,
-                        response_id: None,
-                        upstream_message: None,
-                        provider_final_result: None,
-                        author_agent_id: None,
-                        author_agent_name: None,
-                        reasoning: None,
-                        message_kind: crate::agent::types::AgentMessageKind::Normal,
-                        compaction_strategy: None,
-                        compaction_payload: None,
-                        offloaded_payload_id: None,
-                        tool_output_preview_path: None,
-                        structural_refs: Vec::new(),
-                        pinned_for_compaction: false,
-                        timestamp: now_millis(),
-                    });
-                    thread.messages.push(removed_artifact);
-                    thread.updated_at = now_millis();
-                }
-            }
-        }
         let (post_compaction_window_start, post_compaction_window_end, post_compaction_total_tokens, total_message_count) = {
             let threads = self.threads.read().await;
             match threads.get(thread_id) {

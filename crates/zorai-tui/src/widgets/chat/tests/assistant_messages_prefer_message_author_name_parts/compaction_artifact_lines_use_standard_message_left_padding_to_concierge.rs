@@ -1,8 +1,6 @@
 use super::super::*;
 use crate::state::chat::{AgentMessage, AgentThread, ChatAction, ChatState, MessageRole};
 use crate::theme::ThemeTokens;
-use ratatui::backend::TestBackend;
-use ratatui::Terminal;
 #[test]
 fn compaction_artifact_lines_use_standard_message_left_padding() {
     let mut chat = chat_with_messages(vec![AgentMessage {

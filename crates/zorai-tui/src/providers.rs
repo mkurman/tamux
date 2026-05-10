@@ -17,7 +17,6 @@ mod providers;
 
 pub use known_models_for_provider_auth::*;
 pub use normalize_model_lookup_value_to_default_model_for_provider_auth::*;
-pub use providers::*;
 
 #[cfg(test)]
 #[path = "providers/tests.rs"]

@@ -7,7 +7,6 @@ mod syntax_highlighting;
 
 pub(crate) use build_cached_lines_to_scrollbar_layout::*;
 pub(crate) use scroll_offset_from_thumb_offset_to_file_preview_cache_key::*;
-pub(crate) use syntax_highlighting::*;
 
 #[cfg(test)]
 #[path = "file_preview_tests_parts"]

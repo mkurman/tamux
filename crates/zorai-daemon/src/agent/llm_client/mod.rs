@@ -22,23 +22,24 @@ mod openai_transport;
 mod prelude;
 mod public_api;
 
-pub use anthropic::*;
-pub use anthropic_batches::*;
-pub use anthropic_request_fields::*;
-pub use anthropic_response_types::*;
-pub use anthropic_stream_message_start::*;
-pub use anthropic_stream_stop::*;
-pub use anthropic_stream_upstream_message::*;
-pub use anthropic_stream_usage::*;
-pub use api_types::*;
-pub use helpers::*;
-pub use native_assistant::*;
-pub use openai_responses_protocol::*;
-pub use openai_runtime::*;
-pub use openai_sse::*;
-pub use openai_transport::*;
-pub use prelude::*;
-pub use public_api::*;
+pub(crate) use anthropic::*;
+#[allow(unused_imports)]
+pub(crate) use anthropic_batches::*;
+pub(crate) use anthropic_request_fields::*;
+pub(crate) use anthropic_response_types::*;
+pub(crate) use anthropic_stream_message_start::*;
+pub(crate) use anthropic_stream_stop::*;
+pub(crate) use anthropic_stream_upstream_message::*;
+pub(crate) use anthropic_stream_usage::*;
+pub(crate) use api_types::*;
+pub(crate) use helpers::*;
+pub(crate) use native_assistant::*;
+pub(crate) use openai_responses_protocol::*;
+pub(crate) use openai_runtime::*;
+pub(crate) use openai_sse::*;
+pub(crate) use openai_transport::*;
+pub(crate) use prelude::*;
+pub(crate) use public_api::*;
 
 #[cfg(test)]
 mod tests;

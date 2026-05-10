@@ -1,11 +1,5 @@
-use super::super::drain_request;
-use super::whatsapp_link_methods_send_expected_protocol_messages_to_resolve_task::handle_daemon_message_for_test;
-use super::*;
 use crate::client::{ClientEvent, DaemonClient};
-use crate::wire::*;
 use tokio::sync::mpsc;
-use zorai_protocol::{ClientMessage, DaemonMessage};
-use zorai_shared::providers::*;
 #[tokio::test]
 async fn notification_inbox_upsert_event_is_forwarded() {
     let (event_tx, mut event_rx) = mpsc::channel(8);

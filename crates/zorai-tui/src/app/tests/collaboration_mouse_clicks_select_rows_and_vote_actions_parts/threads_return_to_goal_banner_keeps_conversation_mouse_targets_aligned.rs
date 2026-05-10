@@ -1,9 +1,6 @@
 use super::*;
-use crate::state::*;
-use crate::app::*;
 use crate::app::tests::goal_sidebar_tab_cycling_stays_to_collaboration_mouse_clicks_select_rows::goal_sidebar_tab_cycling_stays_mod::*;
-use super::super::{build_model, rendered_chat_area, unauthenticated_entry, unbounded_channel};
-use ratatui::backend::TestBackend;
+use super::super::{rendered_chat_area, unbounded_channel};
 use std::sync::mpsc;
 #[test]
 fn threads_return_to_goal_banner_keeps_conversation_mouse_targets_aligned() {

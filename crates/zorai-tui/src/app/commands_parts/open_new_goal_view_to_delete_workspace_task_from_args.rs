@@ -1,18 +1,4 @@
 use super::*;
-use crate::client::ClientEvent;
-use crate::providers;
-use crate::state::*;
-use crate::theme::ThemeTokens;
-use crate::widgets;
-use crossterm::event::{
-    KeyCode, KeyModifiers, ModifierKeyCode, MouseButton, MouseEvent, MouseEventKind,
-};
-use ratatui::prelude::*;
-use ratatui::widgets::{Block, BorderType, Borders, Clear};
-use std::process::Child;
-use std::sync::mpsc::Receiver;
-use tokio::sync::mpsc::UnboundedSender;
-use zorai_shared::providers::*;
 impl TuiModel {
     pub(crate) fn open_new_goal_view(&mut self) {
         let current_goal_target = self.current_goal_target_for_mission_control();

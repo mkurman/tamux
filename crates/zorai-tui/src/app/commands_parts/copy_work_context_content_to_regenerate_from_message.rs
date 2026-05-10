@@ -1,18 +1,4 @@
 use super::*;
-use crate::client::ClientEvent;
-use crate::providers;
-use crate::state::*;
-use crate::theme::ThemeTokens;
-use crate::widgets;
-use crossterm::event::{
-    KeyCode, KeyModifiers, ModifierKeyCode, MouseButton, MouseEvent, MouseEventKind,
-};
-use ratatui::prelude::*;
-use ratatui::widgets::{Block, BorderType, Borders, Clear};
-use std::process::Child;
-use std::sync::mpsc::Receiver;
-use tokio::sync::mpsc::UnboundedSender;
-use zorai_shared::providers::*;
 impl TuiModel {
     pub(crate) fn copy_work_context_content(&mut self) {
         let Some(thread_id) = self.chat.active_thread_id().map(str::to_string) else {

@@ -239,20 +239,6 @@ impl TuiModel {
         variants[variant_index].to_string()
     }
 
-    fn latest_daemon_turn_context_tokens(thread: &chat::AgentThread) -> u64 {
-        thread.latest_turn_context_tokens.unwrap_or_else(|| {
-            thread
-                .messages
-                .iter()
-                .rev()
-                .find_map(|message| {
-                    let tokens = message.input_tokens.saturating_add(message.output_tokens);
-                    (tokens > 0).then_some(tokens)
-                })
-                .unwrap_or(0)
-        })
-    }
-
     fn effective_primary_context_window_tokens(&self) -> u32 {
         if let Some(context_window) = providers::resolve_context_window_for_provider_auth(
             &self.config.provider,

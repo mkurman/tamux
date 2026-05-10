@@ -1,24 +1,8 @@
-use super::sections;
-use super::sections::*;
-use super::selection;
-use super::selection::*;
-use super::*;
-use crate::state::sidebar::{SidebarItemTarget, SidebarTab};
 use crate::state::task::*;
 use crate::theme::ThemeTokens;
-use crate::widgets::chat::SelectionPoint;
-use crate::widgets::duration_format::format_duration_ms;
-use ratatui::layout::{Position, Rect};
-use ratatui::prelude::*;
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::layout::Rect;
+use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
-use sections::{
-    render_checkpoints, render_delivery_units, render_dossier, render_live_activity,
-    render_live_todos, render_proof_coverage, render_reports, render_resume_decision,
-    render_step_timeline, render_steps, render_work_context,
-};
-use selection::{display_slice, highlight_line_range, line_display_width, line_plain_text};
 
 use crate::widgets::message::{render_markdown_pub, wrap_text};
 

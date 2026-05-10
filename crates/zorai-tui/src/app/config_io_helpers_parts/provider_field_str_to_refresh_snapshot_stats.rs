@@ -1,6 +1,6 @@
 use super::super::*;
 use super::{
-    flatten_config_value, normalize_compliance_mode, normalize_provider_auth_source,
+    normalize_provider_auth_source,
     normalize_provider_transport, openrouter_provider_list_value, split_openrouter_provider_list,
 };
 use crate::providers;

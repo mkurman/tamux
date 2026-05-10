@@ -10,14 +10,15 @@ use crate::state::*;
 use crate::theme::ThemeTokens;
 use crate::widgets;
 use crossterm::event::{
-    KeyCode, KeyModifiers, ModifierKeyCode, MouseButton, MouseEvent, MouseEventKind,
+    KeyCode, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
 };
+#[cfg(test)]
+use crossterm::event::ModifierKeyCode;
 use ratatui::prelude::*;
 use ratatui::widgets::{Block, BorderType, Borders, Clear};
 use std::process::Child;
 use std::sync::mpsc::Receiver;
 use tokio::sync::mpsc::UnboundedSender;
-use zorai_protocol::*;
 
 mod commands;
 mod config_io;
@@ -343,9 +344,6 @@ mod tests {
     mod provider_onboarding_requires_loaded_auth_state_to_copy_message_shows;
 }
 
-pub(crate) use chat_scrollbar_layout_to_publish_attention_surface_if_changed::*;
 pub(crate) use modal_body_to_step::*;
-pub(crate) use new_to_prompt_modal_title_to_clear_pending_prompt_response_thread::*;
 pub(crate) use pending_workspace_actor_picker::*;
-pub(crate) use send_continue_message_to_set_main_pane_conversation_to_mark_all::*;
 pub(crate) use settings_tab_label_to_target_goal_run_id::*;

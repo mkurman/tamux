@@ -1,12 +1,10 @@
 use super::super::chat_with_messages;
 use super::super::*;
 use crate::state::chat::{
-    AgentMessage, AgentThread, ChatAction, ChatState, MessageRole, RetryPhase, RetryStatusVm,
+    AgentMessage, ChatAction, ChatState, MessageRole, RetryPhase,
 };
 use crate::theme::ThemeTokens;
-use ratatui::backend::TestBackend;
 use ratatui::layout::Rect;
-use ratatui::Terminal;
 #[test]
 fn create_file_tool_row_uses_filename_when_path_is_missing() {
     let chat = chat_with_messages(vec![AgentMessage {

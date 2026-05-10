@@ -1,19 +1,14 @@
-use super::super::build_rendered_lines_to_build_visible_window_from_snapshot_to_apply::*;
 use super::super::render_streaming_markdown_to_message_block_style_to_message_action::*;
 use super::super::resolved_scroll_to_highlight_line_range_to_selected_text_to_selection::*;
 use super::super::selection_point_from_snapshot_to_render::*;
 use super::super::*;
 use crate::state::chat::{
-    AgentMessage, ChatHitTarget, ChatState, MessageRole, RetryPhase, TranscriptMode,
+    AgentMessage, ChatState, MessageRole, RetryPhase, TranscriptMode,
 };
 use crate::theme::ThemeTokens;
-use crate::widgets::message;
 use crate::widgets::message::wrap_text;
-use ratatui::prelude::*;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 #[cfg(test)]
 pub(crate) fn build_rendered_lines(
     chat: &ChatState,

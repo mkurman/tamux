@@ -1,10 +1,4 @@
 use super::*;
-use crate::agent::provider_auth_store;
-use crate::agent::types::{AgentMessage, MessageRole};
-use crate::test_support::EnvGuard;
-use std::collections::VecDeque;
-use std::sync::atomic::AtomicUsize;
-use std::sync::Mutex;
 pub(super) struct TestExchange {
     pub(super) result: std::result::Result<StoredOpenAICodexAuth, String>,
 }

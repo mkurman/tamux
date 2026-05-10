@@ -1,14 +1,6 @@
-use super::*;
 use crate::client::{ClientEvent, DaemonClient};
-use crate::wire::{
-    AgentConfigSnapshot, AgentTask, AgentThread, AnticipatoryItem, CheckpointSummary, FetchedModel,
-    GoalRun, GoalRunStatus, HeartbeatItem, RestoreOutcome, TaskStatus, ThreadParticipantSuggestion,
-    ThreadWorkContext,
-};
 use anyhow::Result;
 use futures::{SinkExt, StreamExt};
-use serde::Deserialize;
-use serde_json::Value;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;

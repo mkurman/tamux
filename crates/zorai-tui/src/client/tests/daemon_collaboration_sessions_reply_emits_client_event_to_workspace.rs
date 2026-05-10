@@ -1,6 +1,5 @@
 use super::whatsapp_link_methods_send_expected_protocol_messages_to_resolve_task::handle_daemon_message_for_test;
 use crate::client::{ClientEvent, DaemonClient};
-use crate::wire::*;
 use serde_json::Value;
 use tokio::sync::mpsc;
 use zorai_protocol::DaemonMessage;

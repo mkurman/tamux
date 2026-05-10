@@ -183,7 +183,7 @@ impl ReadPool {
 /// (drop on overflow) with a short TTL safety net plus explicit
 /// invalidation on writes — see `cache.rs` for the design rationale.
 #[derive(Debug)]
-struct HistoryCaches {
+pub(crate) struct HistoryCaches {
     /// `thread_metadata_json(thread_id) -> Option<String>`. Invalidated by
     /// any thread upsert/delete touching the same id.
     thread_metadata_json:

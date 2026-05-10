@@ -55,6 +55,7 @@ pub(super) fn should_surface_anticipatory_kind(
     }
 }
 
+#[allow(dead_code)]
 pub(super) fn goal_attention_priority(goal_run: &GoalRun, attention: &AttentionFocus) -> u8 {
     if attention.goal_run_id.as_deref() == Some(goal_run.id.as_str()) {
         2

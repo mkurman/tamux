@@ -1,13 +1,8 @@
 use super::*;
-use crate::state::*;
-use crate::app::*;
-use std::fs;
-use std::path::PathBuf;
 use crate::test_support::{env_var_lock, EnvVarGuard, ZORAI_DATA_DIR_ENV};
 use crate::app::tests::goal_sidebar_tab_cycling_stays_to_collaboration_mouse_clicks_select_rows::goal_sidebar_tab_cycling_stays_mod::*;
-use super::super::{build_model, rendered_chat_area, unauthenticated_entry, unbounded_channel};
+use super::super::rendered_chat_area;
 use ratatui::backend::TestBackend;
-use std::sync::mpsc;
 #[test]
 fn goal_sidebar_row_selection_clamps_per_active_tab() {
     let mut state = GoalSidebarState::new();

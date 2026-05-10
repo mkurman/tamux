@@ -59,6 +59,7 @@ pub(super) fn resolve_target_service<'a>(
     }
 }
 
+#[allow(dead_code)]
 pub(super) fn convention_entry_matches(
     entry: &crate::history::MemoryProvenanceReportEntry,
     target_tokens: &[String],

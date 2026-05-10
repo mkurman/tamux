@@ -1,9 +1,5 @@
 use super::whatsapp_modal_esc_sends_stop_and_closes_to_clicking_rendered_settings::*;
 use crate::app::*;
-use crate::state::*;
-use std::sync::mpsc;
-use tokio::sync::mpsc::unbounded_channel;
-use zorai_shared::providers::*;
 #[test]
 fn statistics_modal_keyboard_cycles_tabs_and_filters() {
     let (mut model, mut daemon_rx) = make_model();
