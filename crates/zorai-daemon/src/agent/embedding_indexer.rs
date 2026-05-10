@@ -18,7 +18,7 @@ const SEMANTIC_DOCUMENT_DAILY_SCAN_SECS: u64 = 86_400;
 const EMBEDDING_REQUEST_TIMEOUT_SECS: u64 = 90;
 const MAX_EMBEDDING_BATCH_SIZE: usize = 16;
 #[cfg(feature = "lancedb-vector")]
-const MAX_EMBEDDING_DELETIONS_PER_TICK: usize = 16;
+const MAX_EMBEDDING_DELETIONS_PER_TICK: usize = 256;
 #[cfg(feature = "lancedb-vector")]
 const OPENROUTER_ATTRIBUTION_URL: &str = "https://zorai.app";
 #[cfg(feature = "lancedb-vector")]
@@ -491,7 +491,6 @@ impl AgentEngine {
             return Ok(HashMap::new());
         };
 
-        let _guard = self.semantic_vector_index_lock.lock().await;
         let index = crate::history::vector_index::VectorIndex::open(self.history.data_root());
         let hits = index
             .search(crate::history::vector_index::VectorSearchRequest {
@@ -543,7 +542,6 @@ impl AgentEngine {
         let Some(query_embedding) = query_embeddings.into_iter().next() else {
             return Ok(("No query embedding returned.".to_string(), Vec::new()));
         };
-        let _guard = self.semantic_vector_index_lock.lock().await;
         let index = crate::history::vector_index::VectorIndex::open(self.history.data_root());
         let vector_hits = index
             .search(crate::history::vector_index::VectorSearchRequest {

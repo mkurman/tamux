@@ -17,6 +17,7 @@ mod persistence;
 mod request;
 mod rule_based;
 
+#[cfg(test)]
 pub(crate) use artifact::CompactionLlmFailureWithCapacity;
 pub(crate) use candidate::*;
 pub(crate) use checkpoint::*;

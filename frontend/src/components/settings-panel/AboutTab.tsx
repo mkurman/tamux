@@ -58,7 +58,7 @@ export function AboutTab() {
             <Section title="About">
                 <div style={{ fontSize: 13, lineHeight: 1.6 }}>
                     <p style={{ fontWeight: 600, marginBottom: 8 }}>Zorai - Agent Orchestration Workspace</p>
-                    <p>Version 0.8.18</p>
+                    <p>Version 0.9.0</p>
                     <p style={{ marginTop: 8, color: "var(--text-secondary)" }}>
                         A thread-first agent orchestration workspace with durable goals, workspace boards,
                         approvals, tools, and daemon-backed runtime state.

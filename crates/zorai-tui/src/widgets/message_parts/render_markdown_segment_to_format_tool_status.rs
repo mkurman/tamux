@@ -1,18 +1,12 @@
-use super::markdown_table;
 use super::*;
 use crate::state::chat::{AgentMessage, MessageRole, TranscriptMode};
 use crate::theme::ThemeTokens;
-use crate::widgets::image_preview;
 use crate::widgets::message_operator_question::render_operator_question_message;
 use crate::widgets::tool_diff::{
     render_tool_edit_diff, render_tool_structured_json, ToolStructuredValueSource,
 };
-use ratatui::prelude::*;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
-use zorai_protocol::tool_names;
 pub(crate) fn render_markdown_segment(content: &str, width: usize) -> Vec<Line<'static>> {
     let normalized = normalize_markdown_for_tui(content);
     let md_text = tui_markdown::from_str(&normalized);
@@ -126,7 +120,11 @@ pub(crate) fn is_collapsible_system_notice_message(msg: &AgentMessage) -> bool {
 
 pub(crate) fn collapsible_system_notice_label(msg: &AgentMessage) -> Option<&'static str> {
     if msg.message_kind == "compaction_artifact" {
-        Some("Auto compaction")
+        if compaction_artifact_was_manual(msg) {
+            Some("Manual compaction")
+        } else {
+            Some("Auto compaction")
+        }
     } else if is_meta_cognition_message(msg) {
         Some("🕵🏻‍♂️ Meta-cognition")
     } else if msg.role == MessageRole::System {
@@ -134,6 +132,12 @@ pub(crate) fn collapsible_system_notice_label(msg: &AgentMessage) -> Option<&'st
     } else {
         None
     }
+}
+
+pub(crate) fn compaction_artifact_was_manual(msg: &AgentMessage) -> bool {
+    msg.content
+        .lines()
+        .any(|line| line.trim_start().starts_with("Trigger: manual-request"))
 }
 
 pub(crate) fn collapsible_system_notice_detail(msg: &AgentMessage) -> Option<String> {
@@ -170,6 +174,16 @@ pub(crate) fn is_meta_cognition_content(content: &str) -> bool {
 
 pub(crate) fn background_operation_finished_label(content: &str) -> Option<&'static str> {
     let content = content.trim_start();
+    // Compaction summary messages reuse the "Background operation finished."
+    // prefix so they pipe through this collapsible notice path, but the daemon
+    // tags the second line with the strategy/trigger so we can detect them and
+    // give them a distinct label that matches the user's mental model.
+    if content.contains("compaction applied:") {
+        if content.contains("Manual compaction applied:") {
+            return Some("🗜 Manual compaction completed");
+        }
+        return Some("🗜 Auto compaction completed");
+    }
     if content.starts_with("Background operations finished.") {
         Some("🖥️ Background operations finished")
     } else if content.starts_with("Background operation finished.") {
@@ -345,15 +359,45 @@ pub(crate) fn render_compact(
     }
 
     if let Some(label) = collapsible_system_notice_label(msg) {
+        let is_compaction = msg.message_kind == "compaction_artifact";
         let is_expanded = expanded.contains(&msg_index);
+        let detail_width = width.saturating_sub(2).max(1);
+        let dark_blue = Style::default().fg(Color::Indexed(24));
         lines.push(Line::from(vec![Span::styled(
             format!("{} {label}", toggle_glyph(is_expanded)),
             theme.meta_cognitive,
         )]));
 
-        if is_expanded {
-            let detail_width = width.saturating_sub(2).max(1);
-            let dark_blue = Style::default().fg(Color::Indexed(24));
+        if is_compaction {
+            let visible = msg.content.trim();
+            for detail_line in wrap_text(visible, detail_width) {
+                lines.push(Line::from(vec![
+                    Span::styled("\u{2502}", dark_blue),
+                    Span::raw(" "),
+                    Span::styled(detail_line, theme.fg_dim),
+                ]));
+            }
+            if is_expanded {
+                let payload = msg
+                    .compaction_payload
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|payload| !payload.is_empty() && !visible.contains(payload));
+                if let Some(payload) = payload {
+                    lines.push(Line::from(vec![
+                        Span::styled("\u{2502}", dark_blue),
+                        Span::raw(" "),
+                    ]));
+                    for detail_line in wrap_text(payload, detail_width) {
+                        lines.push(Line::from(vec![
+                            Span::styled("\u{2502}", dark_blue),
+                            Span::raw(" "),
+                            Span::styled(detail_line, theme.fg_dim),
+                        ]));
+                    }
+                }
+            }
+        } else if is_expanded {
             let detail = collapsible_system_notice_detail(msg).unwrap_or_default();
             for detail_line in wrap_text(&detail, detail_width) {
                 lines.push(Line::from(vec![
@@ -516,5 +560,48 @@ pub(crate) fn format_tool_status(status: &str, theme: &ThemeTokens) -> (&'static
         "completed" | "done" | "success" => ("\u{2713} done", theme.accent_success),
         "error" | "failed" => ("\u{2717} error", theme.accent_danger),
         _ => ("\u{25cf} running", theme.accent_secondary),
+    }
+}
+
+#[cfg(test)]
+mod label_tests {
+    use super::background_operation_finished_label;
+
+    #[test]
+    fn auto_compaction_summary_gets_compaction_specific_label() {
+        // Why this matters: the daemon piggy-backs on the existing
+        // "Background operation finished." prefix so this collapsible-notice
+        // path picks up the message, but compaction summaries deserve a
+        // distinct label so users can tell them apart at a glance from
+        // generic background-tool finishes.
+        let content = "Background operation finished.\n\nAuto compaction applied: ~180000 \u{2192} ~5000 tokens (target 160000), trigger token-threshold, strategy heuristic. Earlier history collapsed at checkpoint #20.";
+        assert_eq!(
+            background_operation_finished_label(content),
+            Some("\u{1F5DC} Auto compaction completed")
+        );
+    }
+
+    #[test]
+    fn manual_compaction_summary_distinguishes_from_auto() {
+        let content = "Background operation finished.\n\nManual compaction applied: ~180000 \u{2192} ~5000 tokens (target 160000), trigger manual-request, strategy heuristic. Earlier history collapsed at checkpoint #20.";
+        assert_eq!(
+            background_operation_finished_label(content),
+            Some("\u{1F5DC} Manual compaction completed")
+        );
+    }
+
+    #[test]
+    fn generic_background_op_keeps_existing_label() {
+        let content =
+            "Background operation finished.\n\nOperation result saved to file.\n- operations: 1";
+        assert_eq!(
+            background_operation_finished_label(content),
+            Some("\u{1F5A5}\u{FE0F} Background operation finished")
+        );
+    }
+
+    #[test]
+    fn unrelated_content_returns_none() {
+        assert_eq!(background_operation_finished_label("hello"), None);
     }
 }

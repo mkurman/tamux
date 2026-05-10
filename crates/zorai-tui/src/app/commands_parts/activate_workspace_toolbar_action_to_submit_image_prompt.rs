@@ -1,18 +1,5 @@
 use super::*;
-use crate::client::ClientEvent;
-use crate::providers;
-use crate::state::*;
-use crate::theme::ThemeTokens;
 use crate::widgets;
-use crossterm::event::{
-    KeyCode, KeyModifiers, ModifierKeyCode, MouseButton, MouseEvent, MouseEventKind,
-};
-use ratatui::prelude::*;
-use ratatui::widgets::{Block, BorderType, Borders, Clear};
-use std::process::Child;
-use std::sync::mpsc::Receiver;
-use tokio::sync::mpsc::UnboundedSender;
-use zorai_shared::providers::*;
 impl TuiModel {
     pub(crate) fn activate_workspace_toolbar_action(
         &mut self,
@@ -336,9 +323,16 @@ impl TuiModel {
             }
             "compact" => {
                 let Some(thread_id) = self.chat.active_thread_id().map(str::to_string) else {
-                    self.status_line = "Open a thread first, then run /compact".to_string();
+                    self.status_line = "Start or load thread first".to_string();
+                    self.show_input_notice(
+                        "Start or load thread first",
+                        InputNoticeKind::Warning,
+                        90,
+                        false,
+                    );
                     return;
                 };
+                self.set_agent_activity_for(Some(thread_id.clone()), "compacting");
                 self.send_daemon_command(DaemonCommand::ForceCompact { thread_id });
                 self.status_line = "Forcing compaction...".to_string();
             }

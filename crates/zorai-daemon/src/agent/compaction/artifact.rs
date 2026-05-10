@@ -38,6 +38,7 @@ impl AgentEngine {
         config: &AgentConfig,
         structural_memory: Option<&ThreadStructuralMemory>,
         scope: Option<&CompactionScopeSnapshot>,
+        mode: CompactionCandidateMode,
     ) -> Result<(AgentMessage, CompactionStrategy, Option<String>)> {
         let mut strategy_used = config.compaction.strategy;
         let mut fallback_notice = None;
@@ -73,6 +74,7 @@ impl AgentEngine {
                     &mut strategy_used,
                     &mut fallback_notice,
                     &mut structural_refs,
+                    mode,
                 )
                 .await?
             }
@@ -92,6 +94,7 @@ impl AgentEngine {
                     &mut strategy_used,
                     &mut fallback_notice,
                     &mut structural_refs,
+                    mode,
                 )
                 .await?
             }
@@ -152,10 +155,7 @@ impl AgentEngine {
                 tool_output_preview_path: None,
                 structural_refs,
                 pinned_for_compaction: false,
-                timestamp: messages
-                    .last()
-                    .map(|message| message.timestamp)
-                    .unwrap_or_else(now_millis),
+                timestamp: now_millis(),
             },
             strategy_used,
             fallback_notice,
@@ -294,6 +294,7 @@ impl AgentEngine {
         strategy_used: &mut CompactionStrategy,
         fallback_notice: &mut Option<String>,
         structural_refs: &mut Vec<String>,
+        mode: CompactionCandidateMode,
     ) -> Result<String> {
         let llm_result = self
             .run_llm_compaction(provider_id, provider_config, messages, target_tokens, scope)
@@ -308,23 +309,29 @@ impl AgentEngine {
 
         let model_window_tokens = llm_compaction_input_budget(provider_id, provider_config);
         let input_tokens = estimate_message_tokens(messages);
-        if input_tokens <= model_window_tokens {
-            return Err(anyhow::Error::new(CompactionLlmFailureWithCapacity {
-                strategy,
-                provider_id: provider_id.to_string(),
-                model_window_tokens,
-                input_tokens,
-                source: failure_source,
-            }));
-        }
-
+        let model_had_capacity = input_tokens <= model_window_tokens;
+        let mode_label = match mode {
+            CompactionCandidateMode::Automatic => "auto",
+            CompactionCandidateMode::Forced => "manual",
+        };
+        let fallback_reason = if model_had_capacity {
+            format!(
+                "{strategy_label} compaction failed despite model capacity (input {input_tokens} tokens, model window {model_window_tokens}); {mode_label} compaction fell back to rule based compaction. Cause: {failure_source}"
+            )
+        } else {
+            format!(
+                "{strategy_label} compaction failed (input {input_tokens} tokens > model window {model_window_tokens}); {mode_label} compaction fell back to rule based compaction."
+            )
+        };
         tracing::warn!(
             strategy = ?strategy,
+            ?mode,
             provider_id,
             input_tokens,
             model_window_tokens,
+            model_had_capacity,
             error = %failure_source,
-            "compaction LLM model could not fit input; falling back to heuristic"
+            "compaction LLM call failed; falling back to heuristic"
         );
         *strategy_used = CompactionStrategy::Heuristic;
         let rule_based = self
@@ -337,12 +344,8 @@ impl AgentEngine {
             )
             .await;
         *structural_refs = rule_based.structural_refs;
-        *fallback_notice = merge_compaction_fallback_notice(
-            rule_based.fallback_notice,
-            Some(format!(
-                "{strategy_label} compaction failed (input {input_tokens} tokens > model window {model_window_tokens}); fell back to rule based compaction."
-            )),
-        );
+        *fallback_notice =
+            merge_compaction_fallback_notice(rule_based.fallback_notice, Some(fallback_reason));
         Ok(rule_based.payload)
     }
 
@@ -375,7 +378,7 @@ impl AgentEngine {
 
         let mut section = String::new();
         let mut remaining = budget_chars;
-        let mut append_block = |section: &mut String, header: &str, items: &[crate::history::ThreadSkillRead], remaining: &mut usize, label: &str| {
+        let append_block = |section: &mut String, header: &str, items: &[crate::history::ThreadSkillRead], remaining: &mut usize, label: &str| {
             if items.is_empty() || *remaining == 0 {
                 return;
             }

@@ -228,7 +228,13 @@ fn batched_background_operations_message_collapses_by_default_and_expands() {
 }
 
 #[test]
-fn compaction_artifact_collapses_by_default_and_expands() {
+fn compaction_artifact_shows_header_inline_and_hides_payload_until_expand() {
+    // Why this matters: previously collapsed artifacts showed only a one-line
+    // disclosure label, hiding the trigger/strategy summary unless the user
+    // expanded — the user reported "I don't see compaction info in the chat
+    // anymore". The visible header (msg.content) must always render so users
+    // can see at a glance that a compaction happened and why; the bulkier
+    // hidden payload still needs an explicit expand.
     let msg = AgentMessage {
         role: MessageRole::Assistant,
         content:
@@ -255,10 +261,15 @@ fn compaction_artifact_collapses_by_default_and_expands() {
         "collapsed compaction artifact should show a disclosure header: {collapsed_plain}"
     );
     assert!(
-        !collapsed_plain.contains("Pre-compaction context")
-            && !collapsed_plain.contains("Compact summary")
+        collapsed_plain.contains("Pre-compaction context")
+            && collapsed_plain.contains("Trigger: token-threshold")
+            && collapsed_plain.contains("Strategy: custom model generated"),
+        "collapsed compaction artifact must keep its trigger/strategy banner visible: {collapsed_plain}"
+    );
+    assert!(
+        !collapsed_plain.contains("Compact summary")
             && !collapsed_plain.contains("preserved goals"),
-        "collapsed compaction artifact should hide details: {collapsed_plain}"
+        "collapsed compaction artifact should still hide the bulky payload until expand: {collapsed_plain}"
     );
 
     let mut expanded = empty_expanded();

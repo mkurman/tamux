@@ -1,4 +1,3 @@
-use super::events_audio::text_to_speech_result_path;
 use super::*;
 
 fn parse_workflow_notice_details(details: Option<&str>) -> Option<serde_json::Value> {
@@ -17,6 +16,27 @@ pub(super) fn auto_compaction_reload_window(
         split_at,
         total_message_count,
     ))
+}
+
+pub(super) struct CompactionTokenSnapshot {
+    pub(super) post_compaction_total_tokens: u64,
+    pub(super) post_compaction_window_start: usize,
+    pub(super) post_compaction_window_end: usize,
+}
+
+pub(super) fn compaction_token_snapshot(details: Option<&str>) -> Option<CompactionTokenSnapshot> {
+    let parsed = parse_workflow_notice_details(details)?;
+    let post_compaction_total_tokens =
+        parsed.get("post_compaction_total_tokens")?.as_u64()?;
+    let post_compaction_window_start =
+        parsed.get("post_compaction_window_start")?.as_u64()? as usize;
+    let post_compaction_window_end =
+        parsed.get("post_compaction_window_end")?.as_u64()? as usize;
+    Some(CompactionTokenSnapshot {
+        post_compaction_total_tokens,
+        post_compaction_window_start,
+        post_compaction_window_end,
+    })
 }
 
 pub(super) fn normalized_skill_workflow_notice(
@@ -128,6 +148,11 @@ pub(super) fn normalized_skill_workflow_notice(
                 "skill review".to_string()
             }),
         )),
+        "manual-compaction" | "auto-compaction" => Some((
+            kind.to_string(),
+            message.to_string(),
+            Some("compacting".to_string()),
+        )),
         _ => None,
     }
 }
@@ -137,6 +162,47 @@ mod participant_playground_target_to_handle_operator_model_summary_event;
 
 #[path = "events_activity_parts/handle_operator_model_reset_event_to_handle_divergent_session_event.rs"]
 mod handle_operator_model_reset_event_to_handle_divergent_session_event;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn manual_compaction_workflow_notice_routes_to_compacting_activity() {
+        // Why this matters: render_status_bar ignores status_line entirely,
+        // so the only visible feedback channel for compaction is the per-thread
+        // agent_activity spinner. Compaction kinds must therefore yield an
+        // activity label from this normalizer or the user sees nothing during
+        // the daemon round-trip.
+        let result = normalized_skill_workflow_notice(
+            "manual-compaction",
+            "Manual compaction starting...",
+            None,
+        );
+        let (_kind, _status, activity) = result.expect(
+            "manual-compaction must produce an agent_activity so the spinner stays visible",
+        );
+        assert_eq!(activity.as_deref(), Some("compacting"));
+    }
+
+    #[test]
+    fn auto_compaction_workflow_notice_routes_to_compacting_activity() {
+        let result = normalized_skill_workflow_notice(
+            "auto-compaction",
+            "Auto compaction applied using heuristic.",
+            Some("{\"split_at\":20,\"total_message_count\":121}"),
+        );
+        let (_kind, _status, activity) = result
+            .expect("auto-compaction must also surface the spinner; otherwise users see a hang");
+        assert_eq!(activity.as_deref(), Some("compacting"));
+    }
+
+    #[test]
+    fn unrecognized_workflow_notice_returns_none() {
+        // Sanity: don't accidentally promote arbitrary kinds to the spinner.
+        assert!(normalized_skill_workflow_notice("some-other-kind", "msg", None).is_none());
+    }
+}
 
 pub(super) fn parse_collaboration_sessions(
     value: serde_json::Value,

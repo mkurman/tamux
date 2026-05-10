@@ -1,9 +1,5 @@
 use super::whatsapp_modal_esc_sends_stop_and_closes_to_clicking_rendered_settings::*;
 use crate::app::*;
-use crate::state::*;
-use std::sync::mpsc;
-use tokio::sync::mpsc::unbounded_channel;
-use zorai_shared::providers::*;
 #[test]
 fn thread_picker_ctrl_s_on_stopped_thread_requires_confirmation_before_resume() {
     let (mut model, mut daemon_rx) = make_model();

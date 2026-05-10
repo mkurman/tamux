@@ -1,5 +1,4 @@
 use super::*;
-use crate::agent::provider_auth_store;
 use crate::agent::types::{AgentMessage, AuthSource, MessageRole, ToolCall, ToolFunction};
 use futures::StreamExt;
 use serde::Deserialize;
@@ -7,7 +6,6 @@ use std::collections::VecDeque;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::sync::Mutex;
-use tempfile::tempdir;
 
 const STRUCTURED_ERROR_MARKER: &str = "\n\n[zorai-upstream-diagnostics]";
 
@@ -214,33 +212,6 @@ pub(super) fn responses_test_config(base_url: String, auth_source: AuthSource) -
         openrouter_provider_ignore: Vec::new(),
         openrouter_allow_fallbacks: None,
         openrouter_response_cache_enabled: false,
-    }
-}
-
-struct EnvGuard {
-    vars: Vec<(&'static str, Option<String>)>,
-}
-
-impl EnvGuard {
-    fn new(names: &[&'static str]) -> Self {
-        Self {
-            vars: names
-                .iter()
-                .map(|name| (*name, std::env::var(name).ok()))
-                .collect(),
-        }
-    }
-}
-
-impl Drop for EnvGuard {
-    fn drop(&mut self) {
-        for (name, value) in self.vars.drain(..) {
-            if let Some(value) = value {
-                std::env::set_var(name, value);
-            } else {
-                std::env::remove_var(name);
-            }
-        }
     }
 }
 

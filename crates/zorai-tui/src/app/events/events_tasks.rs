@@ -1,4 +1,3 @@
-use super::*;
 
 #[path = "events_tasks_parts/is_placeholder_goal_run_detail_to_handle_thread_detail_event.rs"]
 mod is_placeholder_goal_run_detail_to_handle_thread_detail_event;

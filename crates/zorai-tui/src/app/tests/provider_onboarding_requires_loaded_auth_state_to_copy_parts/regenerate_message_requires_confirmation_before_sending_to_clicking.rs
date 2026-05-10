@@ -1,8 +1,5 @@
-use super::super::{build_model, rendered_chat_area, unauthenticated_entry, unbounded_channel};
+use super::super::unbounded_channel;
 use super::*;
-use crate::app::*;
-use crate::state::*;
-use ratatui::backend::TestBackend;
 use std::sync::mpsc;
 
 #[test]

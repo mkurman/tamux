@@ -890,7 +890,14 @@ impl TuiModel {
                     self.clear_work_context_drag_selection();
                     self.clear_task_view_drag_selection();
                     self.focus = FocusArea::Input;
-                    if let Some(offset) = self.input_offset_from_mouse(layout.input.y, mouse) {
+                    let inner_row =
+                        mouse.row.saturating_sub(layout.input.y + 1) as usize;
+                    if inner_row < self.attachments.len() {
+                        let att = self.attachments.remove(inner_row);
+                        self.status_line = format!("Removed: {}", att.filename);
+                    } else if let Some(offset) =
+                        self.input_offset_from_mouse(layout.input.y, mouse)
+                    {
                         self.input
                             .reduce(input::InputAction::MoveCursorToPos(offset));
                     }

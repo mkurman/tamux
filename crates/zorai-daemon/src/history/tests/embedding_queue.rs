@@ -1,5 +1,6 @@
 use super::*;
 use crate::agent::types::{AgentTask, TaskPriority, TaskStatus};
+use rusqlite::TransactionBehavior;
 use zorai_protocol::{AgentDbMessage, AgentDbThread};
 
 fn sample_thread() -> AgentDbThread {
@@ -498,5 +499,37 @@ async fn repairing_semantic_index_state_requeues_completed_and_failed_jobs() -> 
     assert_eq!(after.failed_jobs, 0);
     assert_eq!(after.queued_deletions, 0);
     assert_eq!(after.failed_deletions, 0);
+    Ok(())
+}
+
+#[tokio::test]
+async fn claim_embedding_jobs_retries_transient_database_locks() -> Result<()> {
+    let (store, root) = make_test_store().await?;
+    store.create_thread(&sample_thread()).await?;
+    store
+        .add_message(&sample_message("msg-locked", "retry me after lock release"))
+        .await?;
+
+    let db_path = root.join("history").join("command-history.db");
+    let mut lock_conn = rusqlite::Connection::open(&db_path)?;
+    let lock_tx = lock_conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+
+    let claim_task = {
+        let store = store.clone();
+        tokio::spawn(async move {
+            store
+                .claim_embedding_jobs("text-embedding-3-small", 1536, 10)
+                .await
+        })
+    };
+
+    tokio::time::sleep(std::time::Duration::from_millis(5_200)).await;
+    drop(lock_tx);
+
+    let jobs = claim_task.await??;
+    assert_eq!(jobs.len(), 1);
+    assert_eq!(jobs[0].source_id, "msg-locked");
+
+    fs::remove_dir_all(root)?;
     Ok(())
 }

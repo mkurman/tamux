@@ -6,7 +6,6 @@ use crate::state::chat::{AgentThread, ChatAction, ChatState};
 use crate::state::modal::{ModalState, ThreadPickerTab};
 use crate::state::task::{AgentTask, GoalRun, GoalRunStatus, TaskAction, TaskState, TaskStatus};
 use crate::state::workspace::WorkspaceState;
-use crate::state::ModalAction;
 use crate::state::{SubAgentEntry, SubAgentsState};
 use ratatui::layout::{Position, Rect};
 use ratatui::widgets::{Block, BorderType, Borders};

@@ -86,11 +86,6 @@ impl GatewayRuntimeState {
     }
 
     #[cfg(test)]
-    pub fn cursor(&self, platform: &str, channel_id: &str) -> Option<&GatewayCursorState> {
-        self.cursors.get(&cursor_key(platform, channel_id))
-    }
-
-    #[cfg(test)]
     pub fn health_snapshot(&self, platform: &str) -> Option<&GatewayHealthState> {
         self.health_snapshots.get(&platform.to_ascii_lowercase())
     }

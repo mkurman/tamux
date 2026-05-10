@@ -1,18 +1,11 @@
 use super::spawned_agents;
-use super::tab_layout::*;
 use super::*;
-use crate::app::RecentActionVm;
-use crate::state::chat::{ChatState, GatewayStatusVm, MessageRole};
+use crate::state::chat::{ChatState, MessageRole};
 use crate::state::sidebar::{SidebarState, SidebarTab};
 use crate::state::task::TaskState;
-use crate::state::tier::TierState;
-use crate::theme::ThemeTokens;
 use ratatui::prelude::*;
-use ratatui::style::{Color, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
+use ratatui::text::Line;
 use std::hash::{Hash, Hasher};
-use tab_layout::{tab_cells, tab_hit_test, tab_label};
 
 #[derive(Debug, Clone)]
 pub(crate) struct SidebarRow {

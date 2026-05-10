@@ -1,10 +1,8 @@
 use super::super::*;
 use super::{
-    flatten_config_value, normalize_compliance_mode, normalize_provider_auth_source,
-    normalize_provider_transport, openrouter_provider_list_value, split_openrouter_provider_list,
+    normalize_compliance_mode, normalize_provider_auth_source,
+    normalize_provider_transport,
 };
-use crate::providers;
-use zorai_shared::providers::{PROVIDER_ID_CUSTOM, PROVIDER_ID_OPENROUTER};
 
 impl TuiModel {
     pub(in crate::app) fn build_config_patch_value(&mut self) -> serde_json::Value {

@@ -123,13 +123,13 @@ impl OpenAiResponsesFunctionCallOutput {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-enum OpenAiResponsesFunctionCallItemType {
+pub(crate) enum OpenAiResponsesFunctionCallItemType {
     #[serde(rename = "function_call")]
     FunctionCall,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-enum OpenAiResponsesFunctionCallOutputItemType {
+pub(crate) enum OpenAiResponsesFunctionCallOutputItemType {
     #[serde(rename = "function_call_output")]
     FunctionCallOutput,
 }

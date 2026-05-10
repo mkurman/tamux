@@ -16,15 +16,13 @@ mod handle_activity_profile_gateway_daemon_messages;
 mod handle_thread_workspace_and_provider_daemon_messages;
 mod is_internal_agent_thread_to_request_git_diff;
 mod request_agent_status_to_defer_operator_profile_question_to_get_operator;
-pub(crate) use daemon_message_kind_to_handle_connection_to_handle_daemon_message::*;
-pub(crate) use handle_activity_profile_gateway_daemon_messages::*;
-pub(crate) use handle_thread_workspace_and_provider_daemon_messages::*;
-pub(crate) use is_internal_agent_thread_to_request_git_diff::*;
-pub(crate) use request_agent_status_to_defer_operator_profile_question_to_get_operator::*;
 
 #[path = "mod_parts/get_string_lossy.rs"]
 mod get_string_lossy;
-pub(crate) use get_string_lossy::*;
+
+#[cfg(test)]
+pub(crate) use handle_activity_profile_gateway_daemon_messages::*;
+
 #[cfg(test)]
 mod tests {
     use super::*;

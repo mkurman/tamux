@@ -1,10 +1,6 @@
-use super::clicking_footer_queue_indicator_opens_queued_prompts_modal::sample_notification;
 use super::thread_picker_playgrounds_new_row_is_browse_only_to_slash_effort_updates::seed_active_weles_thread;
 use super::whatsapp_modal_esc_sends_stop_and_closes_to_clicking_rendered_settings::*;
 use crate::app::*;
-use crate::state::*;
-use std::sync::mpsc;
-use tokio::sync::mpsc::unbounded_channel;
 use zorai_shared::providers::*;
 #[test]
 fn slash_effort_picker_starts_on_active_thread_owner_effort() {

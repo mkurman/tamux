@@ -1,14 +1,6 @@
-use super::*;
 use crate::client::{ClientEvent, DaemonClient};
-use crate::wire::{
-    AgentConfigSnapshot, AgentTask, AgentThread, AnticipatoryItem, CheckpointSummary, FetchedModel,
-    GoalRun, GoalRunStatus, HeartbeatItem, RestoreOutcome, TaskStatus, ThreadParticipantSuggestion,
-    ThreadWorkContext,
-};
 use anyhow::Result;
 use futures::{SinkExt, StreamExt};
-use serde::Deserialize;
-use serde_json::Value;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -18,6 +10,8 @@ use tokio::sync::mpsc;
 use tokio::time::{Instant, MissedTickBehavior};
 use tokio_util::codec::Framed;
 use tracing::{debug, error, info, warn};
+#[cfg(not(unix))]
+use zorai_protocol::default_tcp_addr;
 use zorai_protocol::{ClientMessage, DaemonMessage, ZoraiCodec};
 impl DaemonClient {
     fn daemon_message_kind(message: &DaemonMessage) -> &'static str {

@@ -4,7 +4,7 @@ mod render_tool_edit_diff_to_summarize_array_value;
 #[path = "tool_diff_parts/empty_key_to_wrap_preserving_whitespace.rs"]
 mod empty_key_to_wrap_preserving_whitespace;
 
-pub use render_tool_edit_diff_to_summarize_array_value::*;
+pub(crate) use render_tool_edit_diff_to_summarize_array_value::*;
 
 #[cfg(test)]
 mod tests {

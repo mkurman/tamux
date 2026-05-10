@@ -1,11 +1,9 @@
-use super::*;
 use crate::client::get_string_lossy::{get_string, get_string_lossy};
 use crate::client::ClientEvent;
 use crate::client::DaemonClient;
 use crate::wire::*;
 use serde_json::Value;
 use tokio::sync::mpsc;
-use tracing::warn;
 
 impl DaemonClient {
     pub(crate) async fn dispatch_match_arms(

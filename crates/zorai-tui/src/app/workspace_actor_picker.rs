@@ -1,7 +1,7 @@
 use zorai_protocol::{WorkspaceActor, AGENT_ID_SWAROG};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum WorkspaceActorPickerMode {
+pub(crate) enum WorkspaceActorPickerMode {
     Assignee,
     Reviewer,
 }

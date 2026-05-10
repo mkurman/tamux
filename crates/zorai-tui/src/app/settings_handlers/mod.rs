@@ -1,10 +1,4 @@
 use super::*;
-use crate::providers;
-use crate::widgets;
-use crossterm::event::{
-    KeyCode, KeyModifiers, ModifierKeyCode, MouseButton, MouseEvent, MouseEventKind,
-};
-use ratatui::prelude::*;
 use zorai_shared::providers::*;
 
 #[path = "activate_feature_settings_field_to_settings_field_click_uses_toggle.rs"]

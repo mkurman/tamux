@@ -11,7 +11,6 @@ mod render_markdown_segment_to_format_tool_status;
 mod wrap_text_to_split_text_by_width;
 
 pub(crate) use format_weles_review_badge_to_render_markdown::*;
-pub(crate) use message::*;
 pub(crate) use render_markdown_segment_to_format_tool_status::*;
 pub(crate) use wrap_text_to_split_text_by_width::*;
 

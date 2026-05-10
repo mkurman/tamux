@@ -18,7 +18,6 @@ pub(crate) use build_rows_to_selection_point_from_mouse::*;
 pub(crate) use content_inner_to_render_goal_summary::*;
 pub(crate) use render_goal_controls_to_render_goal_agents::*;
 pub(crate) use selected_text_to_scrollbar_layout::*;
-pub(crate) use task_view::*;
 
 #[cfg(test)]
 mod tests {

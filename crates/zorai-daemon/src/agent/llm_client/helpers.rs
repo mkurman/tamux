@@ -81,6 +81,7 @@ pub struct FetchedModel {
     pub metadata: Option<serde_json::Value>,
 }
 
+#[allow(dead_code)]
 pub fn fetched_model_feature_capabilities(
     provider_id: &str,
     model: &FetchedModel,

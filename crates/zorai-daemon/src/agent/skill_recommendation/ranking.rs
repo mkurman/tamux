@@ -9,6 +9,7 @@ use std::collections::{BTreeSet, HashMap};
 const MAX_USE_SCORE: f64 = 8.0;
 const RECENCY_DAY_SECS: u64 = 86_400;
 const MAX_LEXICAL_QUERY_TOKENS: usize = 8;
+const MIN_LEXICAL_QUERY_TOKENS: usize = 4;
 const MIN_PARTIAL_EVIDENCE_TERMS: usize = 2;
 const PROCESS_INTENT_TOKENS: &[&str] = &[
     "architect",
@@ -166,7 +167,9 @@ fn score_candidate(
         .filter(|token| search_tokens.contains(token.as_str()))
         .cloned()
         .collect::<Vec<_>>();
-    let lexical_denominator = query_tokens.len().min(MAX_LEXICAL_QUERY_TOKENS).max(1);
+    let lexical_denominator = query_tokens
+        .len()
+        .clamp(MIN_LEXICAL_QUERY_TOKENS, MAX_LEXICAL_QUERY_TOKENS);
     let lexical_overlap =
         matched_terms.len().min(lexical_denominator) as f64 / lexical_denominator as f64;
 

@@ -1,3 +1,5 @@
+#[path = "chat_parts/active_context_tokens_persist_across_message_append.rs"]
+mod active_context_tokens_persist_across_message_append;
 #[path = "chat_parts/delta_appends_to_streaming_content_to_thread_created_moves_new_thread.rs"]
 mod delta_appends_to_streaming_content_to_thread_created_moves_new_thread;
 #[path = "chat_parts/select_next_message_from_none_to_thread_detail_refresh_preserves.rs"]

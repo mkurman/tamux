@@ -4,8 +4,10 @@ mod types;
 
 use crate::agent::skill_registry::{to_community_entry, RegistryClient};
 use crate::agent::types::SkillRecommendationConfig;
-use crate::history::{derive_skill_metadata, HistoryStore, SkillVariantRecord};
-use anyhow::{Context, Result};
+use crate::history::{
+    derive_skill_metadata, GuidelineDocumentRecord, HistoryStore, SkillVariantRecord,
+};
+use anyhow::Result;
 use base64::Engine;
 use ranking::{rank_skill_candidates, rank_skill_candidates_with_semantic_scores};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -35,7 +37,7 @@ pub(crate) async fn discover_local_skills(
         schedule_background_skill_catalog_sync(history.clone(), skills_root.to_path_buf());
         collect_filesystem_skill_candidates(skills_root)?
     } else {
-        let candidates = collect_registered_skill_candidates(skills_root, records)?;
+        let candidates = collect_registered_skill_candidates(history, skills_root, records).await?;
         if candidates.is_empty() {
             schedule_background_skill_catalog_sync(history.clone(), skills_root.to_path_buf());
             collect_filesystem_skill_candidates(skills_root)?
@@ -70,7 +72,7 @@ pub(crate) async fn discover_local_skills_with_semantic_scores(
         schedule_background_skill_catalog_sync(history.clone(), skills_root.to_path_buf());
         collect_filesystem_skill_candidates(skills_root)?
     } else {
-        let candidates = collect_registered_skill_candidates(skills_root, records)?;
+        let candidates = collect_registered_skill_candidates(history, skills_root, records).await?;
         if candidates.is_empty() {
             schedule_background_skill_catalog_sync(history.clone(), skills_root.to_path_buf());
             collect_filesystem_skill_candidates(skills_root)?
@@ -93,14 +95,14 @@ pub(crate) async fn discover_local_skills_with_semantic_scores(
 }
 
 pub(crate) async fn discover_local_guidelines(
-    _history: &HistoryStore,
+    history: &HistoryStore,
     guidelines_root: &Path,
     query: &str,
     workspace_tags: &[String],
     limit: usize,
     cfg: &SkillRecommendationConfig,
 ) -> Result<SkillDiscoveryResult> {
-    let candidates = collect_filesystem_guideline_candidates(guidelines_root)?;
+    let candidates = load_guideline_candidates(history, guidelines_root).await?;
     let graph_signals = HashMap::new();
 
     let result = rank_skill_candidates(
@@ -115,7 +117,7 @@ pub(crate) async fn discover_local_guidelines(
 }
 
 pub(crate) async fn discover_local_guidelines_with_semantic_scores(
-    _history: &HistoryStore,
+    history: &HistoryStore,
     guidelines_root: &Path,
     query: &str,
     workspace_tags: &[String],
@@ -123,7 +125,7 @@ pub(crate) async fn discover_local_guidelines_with_semantic_scores(
     cfg: &SkillRecommendationConfig,
     semantic_scores: &HashMap<String, f64>,
 ) -> Result<SkillDiscoveryResult> {
-    let candidates = collect_filesystem_guideline_candidates(guidelines_root)?;
+    let candidates = load_guideline_candidates(history, guidelines_root).await?;
     let graph_signals = HashMap::new();
 
     Ok(rank_skill_candidates_with_semantic_scores(
@@ -276,6 +278,71 @@ pub(crate) async fn sync_skill_catalog(history: &HistoryStore, skills_root: &Pat
     Ok(())
 }
 
+async fn load_guideline_candidates(
+    history: &HistoryStore,
+    guidelines_root: &Path,
+) -> Result<Vec<SkillCandidateInput>> {
+    let records = history.list_discoverable_guideline_documents(512).await?;
+    if records.is_empty() {
+        schedule_background_guideline_catalog_sync(history.clone(), guidelines_root.to_path_buf());
+        return collect_filesystem_guideline_candidates(guidelines_root);
+    }
+    Ok(collect_registered_guideline_candidates(records))
+}
+
+fn schedule_background_guideline_catalog_sync(history: HistoryStore, guidelines_root: PathBuf) {
+    tokio::spawn(async move {
+        if let Err(error) = sync_guideline_catalog(&history, &guidelines_root).await {
+            tracing::warn!(
+                %error,
+                guidelines_root = %guidelines_root.display(),
+                "background guideline catalog sync failed during discovery"
+            );
+        }
+    });
+}
+
+pub(crate) async fn sync_guideline_catalog(
+    history: &HistoryStore,
+    guidelines_root: &Path,
+) -> Result<()> {
+    let sync_started_at = crate::history::now_ts() as i64;
+    let mut files = Vec::new();
+    collect_guideline_documents(guidelines_root, &mut files)?;
+    for path in files {
+        let relative_path = path
+            .strip_prefix(guidelines_root)
+            .unwrap_or(path.as_path())
+            .to_string_lossy()
+            .replace('\\', "/");
+        let Some(content) = read_recommendation_document(&path, "guideline")? else {
+            continue;
+        };
+        history
+            .register_guideline_document(&relative_path, &content, sync_started_at)
+            .await?;
+    }
+    history
+        .prune_stale_guideline_documents(sync_started_at)
+        .await?;
+    Ok(())
+}
+
+fn collect_registered_guideline_candidates(
+    records: Vec<GuidelineDocumentRecord>,
+) -> Vec<SkillCandidateInput> {
+    let mut candidates = Vec::with_capacity(records.len());
+    for record in records {
+        let derived = derive_skill_metadata(&record.relative_path, &record.excerpt);
+        candidates.push(SkillCandidateInput {
+            metadata: extract_skill_metadata(&record.relative_path, &record.excerpt),
+            excerpt: excerpt_skill(&record.excerpt),
+            record: synthetic_guideline_variant_record(&record.relative_path, &derived),
+        });
+    }
+    candidates
+}
+
 pub(crate) fn resolve_skill_document_path(
     skills_root: &Path,
     relative_path: &str,
@@ -418,6 +485,11 @@ fn collect_guideline_documents(dir: &Path, out: &mut Vec<PathBuf>) -> Result<()>
 
     for entry in entries {
         let entry = entry?;
+        let file_name = entry.file_name();
+        let name_str = file_name.to_string_lossy();
+        if name_str.starts_with('.') || name_str.contains(':') {
+            continue;
+        }
         let path = entry.path();
         if path.is_dir() {
             collect_guideline_documents(&path, out)?;
@@ -452,7 +524,8 @@ fn should_include_skill_relative_path(relative_path: &str) -> bool {
                 .any(|component| component.as_os_str() == "generated"))
 }
 
-fn collect_registered_skill_candidates(
+async fn collect_registered_skill_candidates(
+    history: &HistoryStore,
     skills_root: &Path,
     records: Vec<SkillVariantRecord>,
 ) -> Result<Vec<SkillCandidateInput>> {
@@ -468,6 +541,20 @@ fn collect_registered_skill_candidates(
         let (skill_path, metadata_relative_path) =
             resolve_skill_document_path(skills_root, &record.relative_path);
         let Some(content) = read_recommendation_document(&skill_path, "skill")? else {
+            if let Err(error) = history.retire_skill_variant(&record.variant_id).await {
+                tracing::warn!(
+                    variant_id = %record.variant_id,
+                    relative_path = %record.relative_path,
+                    %error,
+                    "failed to retire stale skill variant after missing/unreadable file"
+                );
+            } else {
+                tracing::info!(
+                    variant_id = %record.variant_id,
+                    relative_path = %record.relative_path,
+                    "retired stale skill variant: backing file missing or unreadable"
+                );
+            }
             continue;
         };
         candidates.push(SkillCandidateInput {
@@ -531,24 +618,43 @@ fn collect_filesystem_guideline_candidates(
     Ok(candidates)
 }
 
+const RECOMMENDATION_HEAD_BYTES: u64 = 16 * 1024;
+
 fn read_recommendation_document(path: &Path, document_kind: &str) -> Result<Option<String>> {
-    match std::fs::read_to_string(path) {
-        Ok(content) => Ok(Some(content)),
+    use std::io::Read;
+    let file = match std::fs::File::open(path) {
+        Ok(file) => file,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
             tracing::warn!(
                 path = %path.display(),
                 document_kind,
                 "recommendation document disappeared before discovery could read it"
             );
-            Ok(None)
+            return Ok(None);
         }
-        Err(error) => Err(error).with_context(|| {
-            format!(
-                "failed to read {document_kind} recommendation file {}",
-                path.display()
-            )
-        }),
+        Err(error) => {
+            tracing::warn!(
+                path = %path.display(),
+                document_kind,
+                %error,
+                "failed to open recommendation document; skipping so discovery can continue"
+            );
+            return Ok(None);
+        }
+    };
+    let mut buf = String::with_capacity(RECOMMENDATION_HEAD_BYTES as usize);
+    if let Err(error) = file.take(RECOMMENDATION_HEAD_BYTES).read_to_string(&mut buf) {
+        if buf.is_empty() {
+            tracing::warn!(
+                path = %path.display(),
+                document_kind,
+                %error,
+                "failed to read recommendation document; skipping so discovery can continue"
+            );
+            return Ok(None);
+        }
     }
+    Ok(Some(buf))
 }
 
 fn synthetic_skill_variant_record(

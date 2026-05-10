@@ -1,19 +1,6 @@
 use super::*;
-use std::process::Child;
-use std::sync::mpsc::Receiver;
 
-use crossterm::event::{
-    KeyCode, KeyModifiers, ModifierKeyCode, MouseButton, MouseEvent, MouseEventKind,
-};
-use ratatui::prelude::*;
-use ratatui::widgets::{Block, BorderType, Borders, Clear};
-use tokio::sync::mpsc::UnboundedSender;
 
-use crate::client::ClientEvent;
-use crate::providers;
-use crate::state::*;
-use crate::theme::ThemeTokens;
-use crate::widgets;
 
 pub(crate) const TUI_TICK_RATE_MS: u64 = 50;
 /// Debounce on `maybe_refresh_spawned_sidebar_tasks`. Tick-based, so the

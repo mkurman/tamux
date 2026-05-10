@@ -8,6 +8,7 @@ pub(crate) fn anthropic_messages_url(base_url: &str) -> String {
     }
 }
 
+#[allow(dead_code)]
 fn anthropic_count_tokens_url(base_url: &str) -> String {
     format!("{}/count_tokens", anthropic_messages_url(base_url))
 }
@@ -192,6 +193,7 @@ fn build_anthropic_post_request(
     request.build().map_err(Into::into)
 }
 
+#[allow(dead_code)]
 fn build_anthropic_count_tokens_request(
     client: &reqwest::Client,
     provider: &str,
@@ -291,6 +293,7 @@ pub(crate) async fn run_anthropic(
     parse_anthropic_sse(response, request_id, tx).await
 }
 
+#[allow(dead_code)]
 pub(crate) async fn count_anthropic_tokens(
     client: &reqwest::Client,
     provider: &str,

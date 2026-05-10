@@ -763,7 +763,7 @@ impl<'a> SendMessageRunner<'a> {
             )
         };
         let internal_dm_thread = is_internal_dm_thread(&tid);
-        let participant_playground_thread = is_participant_playground_thread(&tid);
+        let _participant_playground_thread = is_participant_playground_thread(&tid);
         let workspace_task_context = current_task_snapshot
             .as_ref()
             .is_some_and(is_workspace_agent_task)

@@ -1,12 +1,6 @@
 use super::*;
-use crate::state::*;
-use crate::app::*;
-use std::fs;
-use std::path::PathBuf;
-use crate::app::tests::goal_sidebar_tab_cycling_stays_to_collaboration_mouse_clicks_select_rows::goal_sidebar_tab_cycling_stays_mod::*;
-use super::super::{build_model, rendered_chat_area, unauthenticated_entry, unbounded_channel};
+use super::super::{build_model, rendered_chat_area};
 use ratatui::backend::TestBackend;
-use std::sync::mpsc;
     use base64::Engine as _;
 #[test]
 fn goal_view_scroll_up_moves_off_bottom_after_mouse_overscroll() {

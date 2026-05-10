@@ -9,7 +9,6 @@ mod work_context_view;
 
 pub(crate) use scrollbar_layout_from_metrics_to_selection_point_from_snapshot::*;
 pub(crate) use selection_points_from_mouse_to_terminal_image_overlay_spec::*;
-pub(crate) use work_context_view::*;
 
 #[cfg(test)]
 #[path = "tests/work_context_view.rs"]

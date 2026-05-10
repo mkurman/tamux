@@ -1,4 +1,3 @@
-use super::*;
 use crate::state::sidebar::SidebarTab;
 use crate::theme::ThemeTokens;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};

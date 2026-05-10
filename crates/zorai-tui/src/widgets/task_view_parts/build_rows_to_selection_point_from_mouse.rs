@@ -1,18 +1,13 @@
-use super::sections;
 use super::sections::*;
-use super::selection;
 use super::selection::*;
 use super::*;
-use crate::state::sidebar::{SidebarItemTarget, SidebarTab};
+use crate::state::sidebar::SidebarItemTarget;
 use crate::state::task::*;
 use crate::theme::ThemeTokens;
 use crate::widgets::chat::SelectionPoint;
-use crate::widgets::duration_format::format_duration_ms;
 use ratatui::layout::{Position, Rect};
-use ratatui::prelude::*;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
 pub(crate) fn build_rows(
     tasks: &TaskState,
     target: &SidebarItemTarget,

@@ -8,14 +8,14 @@ use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::{broadcast, mpsc};
 use tokio_util::codec::Framed;
-use zorai_protocol::{ClientMessage, DaemonCodec, DaemonMessage, SessionId};
+use zorai_protocol::{DaemonCodec, DaemonMessage, SessionId};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn pre_dispatch<S>(
     agent: &Arc<AgentEngine>,
     stream: &mut SplitStream<Framed<S, DaemonCodec>>,
     framed: &mut ConnectionWriter,
-    plugin_manager: &Arc<crate::plugin::PluginManager>,
+    _plugin_manager: &Arc<crate::plugin::PluginManager>,
     attached_rxs: &mut Vec<(SessionId, broadcast::Receiver<DaemonMessage>)>,
     client_agent_threads: &mut HashSet<String>,
     last_concierge_welcome_fingerprint: &mut Option<String>,
@@ -104,7 +104,6 @@ where
                                 framed
                                     .send(DaemonMessage::AgentEvent { event_json: json })
                                     .await?;
-                                drained_event_count += 1;
                             }
                         }
                         break;

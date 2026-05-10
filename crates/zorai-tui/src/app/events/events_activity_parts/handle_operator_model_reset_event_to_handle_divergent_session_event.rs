@@ -1,10 +1,9 @@
 use super::super::super::*;
 use super::super::events_activity::{
-    auto_compaction_reload_window, normalized_skill_workflow_notice, parse_collaboration_sessions,
+    auto_compaction_reload_window, compaction_token_snapshot, normalized_skill_workflow_notice,
+    parse_collaboration_sessions,
 };
-use super::super::events_audio::text_to_speech_result_path;
 use super::super::*;
-use super::participant_playground_target_to_handle_operator_model_summary_event::*;
 
 impl TuiModel {
     pub(in crate::app) fn handle_operator_model_reset_event(&mut self, ok: bool) {
@@ -337,6 +336,21 @@ impl TuiModel {
                         active_compaction_window_start: split_at,
                         total_message_count,
                     });
+                    if let Some(snapshot) = compaction_token_snapshot(details_ref) {
+                        // Surface the post-compaction token count immediately so
+                        // the header drops from its (often clamped-to-100%)
+                        // pre-compaction value rather than waiting for the
+                        // separate ContextWindowUpdate event.
+                        self.chat.reduce(chat::ChatAction::ContextWindowUpdated {
+                            thread_id: thread_id.to_string(),
+                            active_context_window_start: snapshot
+                                .post_compaction_window_start,
+                            active_context_window_end: snapshot
+                                .post_compaction_window_end,
+                            active_context_window_tokens: snapshot
+                                .post_compaction_total_tokens,
+                        });
+                    }
                     let span_start = self
                         .chat
                         .threads()

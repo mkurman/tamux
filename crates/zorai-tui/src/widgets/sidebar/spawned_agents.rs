@@ -7,13 +7,13 @@ thread_local! {
 }
 
 #[derive(Debug, Clone)]
-pub(super) struct SpawnedSidebarItem {
-    pub(super) depth: usize,
-    pub(super) title: String,
-    pub(super) target_thread_id: Option<String>,
-    pub(super) is_active: bool,
-    pub(super) openable: bool,
-    pub(super) live: bool,
+pub(crate) struct SpawnedSidebarItem {
+    pub(crate) depth: usize,
+    pub(crate) title: String,
+    pub(crate) target_thread_id: Option<String>,
+    pub(crate) is_active: bool,
+    pub(crate) openable: bool,
+    pub(crate) live: bool,
 }
 
 fn branch_target_thread_id(

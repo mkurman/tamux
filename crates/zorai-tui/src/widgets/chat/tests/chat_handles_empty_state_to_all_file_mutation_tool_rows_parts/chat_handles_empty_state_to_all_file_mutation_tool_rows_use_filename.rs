@@ -1,12 +1,10 @@
 use super::super::chat_with_messages;
 use super::super::*;
 use crate::state::chat::{
-    AgentMessage, AgentThread, ChatAction, ChatState, MessageRole, RetryPhase, RetryStatusVm,
+    AgentMessage, ChatState, MessageRole,
 };
 use crate::theme::ThemeTokens;
-use ratatui::backend::TestBackend;
 use ratatui::layout::Rect;
-use ratatui::Terminal;
 #[test]
 fn chat_handles_empty_state() {
     let chat = ChatState::new();

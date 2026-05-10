@@ -1,8 +1,5 @@
-use super::context;
 use super::model_catalog;
-use super::*;
 use crate::state::config::FetchedModel;
-use zorai_shared::providers::*;
 
 #[cfg(test)]
 pub fn known_models_for_provider(provider: &str) -> Vec<FetchedModel> {

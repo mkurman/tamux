@@ -1,18 +1,13 @@
 use super::from_tasks_to_is_weles_thread::*;
 use super::is_svarog_agent_name_to_hit_test::*;
-use super::*;
-use crate::state::chat::{AgentThread, ChatState};
-use crate::state::modal::{ModalState, ThreadPickerTab};
+use crate::state::chat::ChatState;
+use crate::state::modal::ModalState;
 use crate::state::subagents::SubAgentsState;
-use crate::state::task::{GoalRunStatus, TaskState, TaskStatus};
+use crate::state::task::TaskState;
 use crate::state::workspace::WorkspaceState;
-use crate::theme::ThemeTokens;
 use crate::widgets::token_format::format_token_count;
 use ratatui::prelude::*;
-use ratatui::style::{Color, Style};
-use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, Paragraph};
-use zorai_protocol::{AGENT_NAME_RAROG, AGENT_NAME_SWAROG};
+use ratatui::widgets::{Block, BorderType, Borders};
 
 pub fn hit_test_for_workspace(
     area: Rect,

@@ -315,5 +315,7 @@ pub(crate) use super::super::task_scheduler::selection::make_task_log_entry;
 pub(crate) use super::super::types::CompletionProviderFinalResult;
 pub(crate) use super::super::types::{
     AgentContentBlock, AgentMessage, AgentMessageKind, AgentTask, ApiTransport, ApiType,
-    ExternalRuntimeConflictPolicy, MessageRole, TaskLogLevel, TaskStatus, ThreadExecutionProfile,
+    ExternalRuntimeConflictPolicy, MessageRole, TaskLogLevel, ThreadExecutionProfile,
 };
+#[cfg(test)]
+pub(crate) use super::super::types::TaskStatus;

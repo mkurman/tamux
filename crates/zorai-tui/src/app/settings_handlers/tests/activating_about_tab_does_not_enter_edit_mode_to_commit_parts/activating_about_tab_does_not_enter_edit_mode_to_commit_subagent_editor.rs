@@ -1,16 +1,6 @@
 use super::super::{auth_env_lock, make_model, unique_test_db_path};
-use super::opening_weles_editor_hides_inherited_main_system_prompt_to_feat_skill::focus_settings_field;
 use super::*;
-use crate::app::TuiModel;
 use crate::state::settings::SettingsTab;
-use crate::state::*;
-use crate::widgets;
-use crossterm::event::{KeyCode, KeyModifiers};
-use rusqlite::{params, Connection};
-use std::ffi::OsString;
-use std::path::PathBuf;
-use tokio::sync::mpsc::unbounded_channel;
-use zorai_shared::providers::*;
 #[test]
 fn activating_about_tab_does_not_enter_edit_mode() {
     let (mut model, _daemon_rx) = make_model();

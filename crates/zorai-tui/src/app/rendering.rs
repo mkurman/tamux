@@ -239,20 +239,6 @@ impl TuiModel {
         variants[variant_index].to_string()
     }
 
-    fn latest_daemon_turn_context_tokens(thread: &chat::AgentThread) -> u64 {
-        thread.latest_turn_context_tokens.unwrap_or_else(|| {
-            thread
-                .messages
-                .iter()
-                .rev()
-                .find_map(|message| {
-                    let tokens = message.input_tokens.saturating_add(message.output_tokens);
-                    (tokens > 0).then_some(tokens)
-                })
-                .unwrap_or(0)
-        })
-    }
-
     fn effective_primary_context_window_tokens(&self) -> u32 {
         if let Some(context_window) = providers::resolve_context_window_for_provider_auth(
             &self.config.provider,
@@ -1030,12 +1016,15 @@ impl TuiModel {
             self.current_header_context_window_tokens(profile).max(1) as u64;
         let compaction_target_tokens =
             self.current_header_context_target_tokens(profile).max(1) as u64;
+        let compaction_model_window_tokens =
+            self.current_header_compaction_model_window_tokens(context_window_tokens);
         let Some(thread) = thread else {
             return widgets::header::HeaderUsageDisplay {
                 total_thread_tokens: 0,
                 current_tokens: 0,
                 context_window_tokens,
                 compaction_target_tokens,
+                compaction_model_window_tokens,
                 utilization_pct: 0,
                 total_cost_usd: None,
             };
@@ -1060,8 +1049,27 @@ impl TuiModel {
             current_tokens,
             context_window_tokens,
             compaction_target_tokens,
+            compaction_model_window_tokens,
             utilization_pct,
             total_cost_usd,
+        }
+    }
+
+    fn current_header_compaction_model_window_tokens(
+        &self,
+        primary_window_tokens: u64,
+    ) -> Option<u64> {
+        let primary_window_u32 = primary_window_tokens.min(u32::MAX as u64) as u32;
+        let candidate = match self.config.compaction_strategy.as_str() {
+            "weles" => self
+                .current_header_weles_compaction_window_tokens(primary_window_u32),
+            "custom_model" => self.config.compaction_custom_context_window_tokens.max(1),
+            _ => return None,
+        } as u64;
+        if candidate < primary_window_tokens {
+            Some(candidate)
+        } else {
+            None
         }
     }
 

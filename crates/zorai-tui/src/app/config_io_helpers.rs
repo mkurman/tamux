@@ -1,5 +1,4 @@
 use super::*;
-use zorai_shared::providers::{PROVIDER_ID_CUSTOM, PROVIDER_ID_OPENROUTER};
 
 pub(crate) fn normalize_provider_auth_source(provider_id: &str, auth_source: &str) -> String {
     if providers::supported_auth_sources_for(provider_id).contains(&auth_source) {

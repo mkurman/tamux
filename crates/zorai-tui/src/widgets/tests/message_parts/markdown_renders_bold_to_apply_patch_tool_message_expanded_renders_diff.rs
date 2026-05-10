@@ -1,8 +1,8 @@
 use super::super::*;
 use crate::state::chat::{AgentMessage, MessageRole, TranscriptMode};
 use crate::theme::ThemeTokens;
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span};
+use ratatui::style::Modifier;
+use ratatui::text::Line;
 
 pub(super) fn empty_expanded() -> ExpandedReasoning {
     ExpandedReasoning::new()

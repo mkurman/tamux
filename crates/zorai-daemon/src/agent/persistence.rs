@@ -24,60 +24,7 @@ pub(super) fn sanitize_task_for_external_view(task: &mut AgentTask) {
     }
 }
 
-async fn restore_weles_runtime_context(engine: &AgentEngine, task: &mut AgentTask) {
-    if task.sub_agent_def_id.as_deref()
-        != Some(crate::agent::agent_identity::WELES_BUILTIN_SUBAGENT_ID)
-    {
-        return;
-    }
-
-    let Some(prompt) = task.override_system_prompt.as_deref() else {
-        return;
-    };
-    if crate::agent::weles_governance::parse_weles_internal_override_payload(prompt).is_some() {
-        return;
-    }
-
-    let scope = if prompt.contains("Your current internal scope is vitality.") {
-        Some(crate::agent::agent_identity::WELES_VITALITY_SCOPE)
-    } else if prompt.contains("Your current internal scope is governance.") {
-        Some(crate::agent::agent_identity::WELES_GOVERNANCE_SCOPE)
-    } else {
-        None
-    };
-    let Some(scope) = scope else {
-        return;
-    };
-
-    let key = weles_runtime_context_key(&task.id);
-    let Ok(Some(raw_context)) = engine.history.get_consolidation_state(&key).await else {
-        return;
-    };
-    if raw_context.trim().is_empty() {
-        return;
-    }
-    let Ok(inspection_context) = serde_json::from_str::<serde_json::Value>(&raw_context) else {
-        tracing::warn!(task_id = %task.id, "failed to parse persisted WELES runtime context");
-        return;
-    };
-    let Some(internal_payload) =
-        crate::agent::weles_governance::build_weles_internal_override_payload(
-            scope,
-            &inspection_context,
-        )
-    else {
-        tracing::warn!(task_id = %task.id, "failed to rebuild WELES runtime payload from persisted context");
-        return;
-    };
-    task.override_system_prompt = Some(format!("{prompt}\n\n{internal_payload}"));
-    engine
-        .trusted_weles_tasks
-        .write()
-        .await
-        .insert(task.id.clone());
-}
-
-/// Batched variant of `restore_weles_runtime_context`. The previous form was
+/// Batched restore of WELES runtime context. The previous per-task form was
 /// called per task in hydrate loops, doing one `get_consolidation_state`
 /// await per Weles task — at daemon startup with N pending Weles tasks this
 /// is N round-trips to the SQLite background thread. The batched version:

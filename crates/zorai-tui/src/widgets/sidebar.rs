@@ -15,8 +15,9 @@ mod sidebar;
 pub(crate) use filtered_file_index_to_render::*;
 pub(crate) use render_cached_to_spawned_sidebar_flatten_call_count::*;
 pub(crate) use show_spawned_to_selected_file_path::*;
-pub(crate) use sidebar::*;
-pub(crate) use tab_layout::{tab_cells, tab_hit_test, tab_label};
+
+#[cfg(test)]
+pub(crate) use tab_layout::{tab_cells, tab_hit_test};
 
 #[cfg(test)]
 #[path = "tests/sidebar.rs"]

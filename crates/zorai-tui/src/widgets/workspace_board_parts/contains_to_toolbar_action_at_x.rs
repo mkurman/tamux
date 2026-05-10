@@ -1,12 +1,5 @@
 use super::*;
-use crate::state::workspace::WorkspaceState;
-use crate::theme::ThemeTokens;
 use ratatui::prelude::*;
-use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
-use std::collections::HashSet;
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
-use zorai_protocol::WorkspaceTaskStatus;
 pub(crate) fn contains(area: Rect, position: Position) -> bool {
     position.x >= area.x
         && position.x < area.x.saturating_add(area.width)

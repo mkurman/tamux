@@ -1,4 +1,3 @@
-use super::*;
 use crate::state::chat::*;
 #[test]
 fn thread_detail_refresh_preserves_finalized_stream_after_stale_user_snapshot() {

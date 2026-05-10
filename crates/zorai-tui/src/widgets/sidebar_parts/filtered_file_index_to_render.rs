@@ -1,5 +1,4 @@
 use super::spawned_agents;
-use super::tab_layout::*;
 use super::*;
 use crate::app::RecentActionVm;
 use crate::state::chat::{ChatState, GatewayStatusVm, MessageRole};
@@ -10,8 +9,6 @@ use crate::theme::ThemeTokens;
 use ratatui::prelude::*;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
-use std::hash::{Hash, Hasher};
 pub(crate) fn filtered_file_index(
     tasks: &TaskState,
     sidebar: &SidebarState,

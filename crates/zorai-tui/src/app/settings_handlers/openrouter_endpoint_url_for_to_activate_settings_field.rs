@@ -1,11 +1,5 @@
 use super::*;
 use crate::providers;
-use crate::widgets;
-use crossterm::event::{
-    KeyCode, KeyModifiers, ModifierKeyCode, MouseButton, MouseEvent, MouseEventKind,
-};
-use ratatui::prelude::*;
-use zorai_shared::providers::*;
 #[path = "activate_advanced_settings_field.rs"]
 mod activate_advanced_settings_field;
 #[path = "activate_compaction_settings_field.rs"]

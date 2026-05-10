@@ -316,7 +316,7 @@ where
     let (mut sink, mut stream) = framed.split();
 
     let (write_tx, mut write_rx) = mpsc::channel::<DaemonMessage>(CONNECTION_WRITE_BUFFER);
-    let writer_task = tokio::spawn(async move {
+    let _writer_task = tokio::spawn(async move {
         while let Some(msg) = write_rx.recv().await {
             let started = std::time::Instant::now();
             if let Err(error) = sink.send(msg).await {

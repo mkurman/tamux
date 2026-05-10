@@ -34,6 +34,15 @@ impl<'a> SendMessageRunner<'a> {
             crate::agent::compaction::active_compaction_window(messages);
         let active_context_window_tokens =
             crate::agent::compaction::estimate_message_tokens(active_messages) as u64;
+        tracing::info!(
+            thread_id = %self.tid,
+            active_context_window_start,
+            active_context_window_end = messages.len(),
+            active_context_window_tokens,
+            total_messages = messages.len(),
+            active_messages_count = active_messages.len(),
+            "agent loop emitting ContextWindowUpdate"
+        );
         let _ = self.engine.event_tx.send(AgentEvent::ContextWindowUpdate {
             thread_id: self.tid.clone(),
             active_context_window_start,

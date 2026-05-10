@@ -4,7 +4,9 @@ mod preferred_voice_capture_backend_from_env_to_stop_voice_capture_process;
 #[path = "input_ops_parts/input_wrap_width_to_infer_attachment_mime.rs"]
 mod input_wrap_width_to_infer_attachment_mime;
 
+#[cfg(test)]
 pub(crate) use preferred_voice_capture_backend_from_env_to_stop_voice_capture_process::*;
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,30 +1,23 @@
 use super::{
     build_gateway_bootstrap_payload, build_session_end_episode_payload,
-    concierge_welcome_fingerprint, enqueue_gateway_incoming_event, handle_connection,
-    is_expected_disconnect_error, persist_gateway_health_update, StartupReadiness,
+    concierge_welcome_fingerprint, enqueue_gateway_incoming_event,
+    is_expected_disconnect_error, persist_gateway_health_update,
 };
 use crate::agent::types::AgentConfig;
 use crate::agent::types::{
-    AgentEvent, AgentMessage, AgentThread, ConciergeAction, ConciergeActionType,
+    AgentEvent, ConciergeAction, ConciergeActionType,
     ConciergeDetailLevel,
 };
 use crate::agent::AgentEngine;
-use crate::agent::{StreamCancellationEntry, StreamProgressKind};
 use crate::history::HistoryStore;
-use crate::plugin::PluginManager;
 use crate::session_manager::SessionManager;
-use futures::{SinkExt, StreamExt};
 use std::collections::HashSet;
-use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::io::DuplexStream;
-use tokio::task::JoinHandle;
 use tokio::time::{timeout, Duration};
 use zorai_protocol::{
-    ClientMessage, DaemonMessage, GatewayConnectionStatus, GatewayHealthState,
-    GatewayIncomingEvent, GatewayRegistration, GatewaySendRequest, SessionInfo, ZoraiCodec,
-    GATEWAY_IPC_PROTOCOL_VERSION,
+    DaemonMessage, GatewayConnectionStatus, GatewayHealthState,
+    GatewayIncomingEvent, SessionInfo,
 };
 
 pub(crate) fn repo_root() -> PathBuf {
@@ -35,7 +28,6 @@ pub(crate) fn repo_root() -> PathBuf {
         .expect("workspace root")
         .to_path_buf()
 }
-use tokio_util::codec::Framed;
 
 #[test]
 fn concierge_welcome_fingerprint_matches_for_identical_events() {

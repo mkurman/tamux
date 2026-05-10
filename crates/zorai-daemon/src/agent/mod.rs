@@ -156,7 +156,7 @@ pub(crate) use config::ConfigRuntimeProjection;
 pub(crate) use explanation::*;
 pub(crate) use gateway_health::GatewayConnectionStatus as RuntimeGatewayConnectionStatus;
 use goal_parsing::*;
-pub(in crate::agent) use goal_planner::{goal_step_verdict_state_key, GOAL_VERIFICATION_SOURCE};
+pub(in crate::agent) use goal_planner::GOAL_VERIFICATION_SOURCE;
 use goal_routing::*;
 use honcho::*;
 use memory::*;

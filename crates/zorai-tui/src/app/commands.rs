@@ -16,7 +16,7 @@ enum GoalSidebarCommandItem {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum GoalActionPickerItem {
+pub(crate) enum GoalActionPickerItem {
     PauseGoal,
     ResumeGoal,
     StopGoal,

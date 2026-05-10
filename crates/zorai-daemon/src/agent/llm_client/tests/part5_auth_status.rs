@@ -1,13 +1,7 @@
-use super::part1::*;
 use super::part5_support::*;
 use super::*;
 use crate::agent::provider_auth_store;
-use crate::agent::types::{AgentMessage, MessageRole};
 use crate::test_support::EnvGuard;
-use std::collections::VecDeque;
-use std::sync::atomic::AtomicUsize;
-use std::sync::Arc;
-use std::sync::Mutex;
 use std::time::Duration;
 use tempfile::tempdir;
 

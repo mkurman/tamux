@@ -19,7 +19,6 @@ pub(crate) async fn query_memory_graph(
 
     let mut nodes = BTreeMap::new();
     let mut edges = Vec::new();
-    let mut cluster_summaries = Vec::new();
     let mut visited = BTreeSet::new();
     let mut queue = VecDeque::from([(center_node_id.to_string(), 0usize)]);
 
@@ -63,7 +62,7 @@ pub(crate) async fn query_memory_graph(
     }
 
     let visited_node_ids: Vec<String> = visited.iter().cloned().collect();
-    cluster_summaries = history
+    let cluster_summaries = history
         .list_memory_cluster_summaries_for_nodes(&visited_node_ids, 4)
         .await?;
 

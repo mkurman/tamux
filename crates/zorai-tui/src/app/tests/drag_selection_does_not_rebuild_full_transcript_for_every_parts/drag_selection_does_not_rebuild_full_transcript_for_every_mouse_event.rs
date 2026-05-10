@@ -1,9 +1,6 @@
-use super::super::{build_model, rendered_chat_area, unbounded_channel};
+use super::super::{build_model, rendered_chat_area};
 use super::*;
-use crate::app::*;
-use crate::state::*;
 use ratatui::backend::TestBackend;
-use std::sync::mpsc;
 
 #[test]
 fn drag_selection_does_not_rebuild_full_transcript_for_every_mouse_event() {

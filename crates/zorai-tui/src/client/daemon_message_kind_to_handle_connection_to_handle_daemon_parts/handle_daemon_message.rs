@@ -1,22 +1,8 @@
-use super::*;
 use crate::client::ThreadDetailChunkBuffer;
 use crate::client::{ClientEvent, DaemonClient};
-use crate::wire::{
-    AgentConfigSnapshot, AgentTask, AgentThread, AnticipatoryItem, CheckpointSummary, FetchedModel,
-    GoalRun, GoalRunStatus, HeartbeatItem, RestoreOutcome, TaskStatus, ThreadParticipantSuggestion,
-    ThreadWorkContext,
-};
-use anyhow::Result;
-use futures::{SinkExt, StreamExt};
-use serde::Deserialize;
-use serde_json::Value;
-use std::sync::Mutex;
-use std::time::Duration;
 use tokio::sync::mpsc;
-use tokio::time::{Instant, MissedTickBehavior};
-use tokio_util::codec::Framed;
-use tracing::{debug, error, info, warn};
-use zorai_protocol::{ClientMessage, DaemonMessage, ZoraiCodec};
+use tracing::{debug, warn};
+use zorai_protocol::DaemonMessage;
 impl DaemonClient {
     pub(crate) async fn handle_daemon_message(
         message: DaemonMessage,

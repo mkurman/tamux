@@ -1,10 +1,8 @@
 use super::*;
-use crate::app::*;
-use crate::state::*;
 use std::os::unix::fs::PermissionsExt;
 use std::sync::{LazyLock, Mutex};
 use tokio::sync::mpsc::unbounded_channel;
-use zorai_shared::providers::{PROVIDER_ID_GITHUB_COPILOT, PROVIDER_ID_OPENAI};
+use zorai_shared::providers::PROVIDER_ID_OPENAI;
 #[cfg(test)]
 #[cfg(unix)]
 #[cfg(unix)]

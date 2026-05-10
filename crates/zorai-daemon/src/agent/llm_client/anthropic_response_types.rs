@@ -1,4 +1,5 @@
 use super::*;
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AnthropicMessageTokensCount {
     pub input_tokens: u64,

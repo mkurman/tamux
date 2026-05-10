@@ -1,11 +1,4 @@
 use super::*;
-use crate::providers;
-use crate::widgets;
-use crossterm::event::{
-    KeyCode, KeyModifiers, ModifierKeyCode, MouseButton, MouseEvent, MouseEventKind,
-};
-use ratatui::prelude::*;
-use zorai_shared::providers::*;
 impl TuiModel {
     pub(crate) fn activate_feature_settings_field(&mut self, field: &str) -> bool {
         match field {

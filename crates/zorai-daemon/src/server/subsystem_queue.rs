@@ -1,6 +1,6 @@
 use super::*;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) enum BackgroundSubsystem {
+pub(crate) enum BackgroundSubsystem {
     ConciergeWork,
     AgentWork,
     ProviderIo,
@@ -9,7 +9,7 @@ pub(super) enum BackgroundSubsystem {
 }
 
 impl BackgroundSubsystem {
-    pub(super) const ALL: [Self; 5] = [
+    pub(crate) const ALL: [Self; 5] = [
         Self::ConciergeWork,
         Self::AgentWork,
         Self::ProviderIo,
@@ -18,14 +18,14 @@ impl BackgroundSubsystem {
     ];
 }
 
-pub(super) enum BackgroundSignal {
+pub(crate) enum BackgroundSignal {
     Deliver(DaemonMessage),
     Finished,
 }
 
-pub(super) const SUBSYSTEM_QUEUE_CAPACITY: usize = 256;
+pub(crate) const SUBSYSTEM_QUEUE_CAPACITY: usize = 256;
 
-pub(super) struct BackgroundSubsystemQueues {
+pub(crate) struct BackgroundSubsystemQueues {
     concierge_work_tx: tokio::sync::mpsc::Sender<BackgroundSignal>,
     concierge_work_rx: tokio::sync::mpsc::Receiver<BackgroundSignal>,
     agent_work_tx: tokio::sync::mpsc::Sender<BackgroundSignal>,
@@ -39,7 +39,7 @@ pub(super) struct BackgroundSubsystemQueues {
 }
 
 impl BackgroundSubsystemQueues {
-    pub(super) fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let (concierge_work_tx, concierge_work_rx) =
             tokio::sync::mpsc::channel::<BackgroundSignal>(SUBSYSTEM_QUEUE_CAPACITY);
         let (agent_work_tx, agent_work_rx) =
@@ -65,7 +65,7 @@ impl BackgroundSubsystemQueues {
         }
     }
 
-    pub(super) fn sender(
+    pub(crate) fn sender(
         &self,
         subsystem: BackgroundSubsystem,
     ) -> tokio::sync::mpsc::Sender<BackgroundSignal> {
@@ -78,7 +78,7 @@ impl BackgroundSubsystemQueues {
         }
     }
 
-    pub(super) fn try_recv(
+    pub(crate) fn try_recv(
         &mut self,
         subsystem: BackgroundSubsystem,
     ) -> Result<BackgroundSignal, tokio::sync::mpsc::error::TryRecvError> {
@@ -93,7 +93,7 @@ impl BackgroundSubsystemQueues {
 }
 
 #[derive(Debug, Default)]
-pub(super) struct BackgroundPendingCounts {
+pub(crate) struct BackgroundPendingCounts {
     concierge_work: usize,
     agent_work: usize,
     provider_io: usize,
@@ -102,7 +102,7 @@ pub(super) struct BackgroundPendingCounts {
 }
 
 impl BackgroundPendingCounts {
-    pub(super) fn capacity(subsystem: BackgroundSubsystem) -> usize {
+    pub(crate) fn capacity(subsystem: BackgroundSubsystem) -> usize {
         match subsystem {
             BackgroundSubsystem::ConciergeWork => 4,
             BackgroundSubsystem::AgentWork => 32,
@@ -112,7 +112,7 @@ impl BackgroundPendingCounts {
         }
     }
 
-    pub(super) fn try_increment(&mut self, subsystem: BackgroundSubsystem) -> bool {
+    pub(crate) fn try_increment(&mut self, subsystem: BackgroundSubsystem) -> bool {
         let current = match subsystem {
             BackgroundSubsystem::ConciergeWork => self.concierge_work,
             BackgroundSubsystem::AgentWork => self.agent_work,
@@ -129,7 +129,7 @@ impl BackgroundPendingCounts {
         true
     }
 
-    pub(super) fn has_capacity(&self, subsystem: BackgroundSubsystem) -> bool {
+    pub(crate) fn has_capacity(&self, subsystem: BackgroundSubsystem) -> bool {
         let current = match subsystem {
             BackgroundSubsystem::ConciergeWork => self.concierge_work,
             BackgroundSubsystem::AgentWork => self.agent_work,
@@ -141,7 +141,7 @@ impl BackgroundPendingCounts {
         current < Self::capacity(subsystem)
     }
 
-    pub(super) fn increment(&mut self, subsystem: BackgroundSubsystem) {
+    pub(crate) fn increment(&mut self, subsystem: BackgroundSubsystem) {
         match subsystem {
             BackgroundSubsystem::ConciergeWork => {
                 self.concierge_work = self.concierge_work.saturating_add(1);
@@ -166,7 +166,7 @@ impl BackgroundPendingCounts {
         }
     }
 
-    pub(super) fn decrement(&mut self, subsystem: BackgroundSubsystem) {
+    pub(crate) fn decrement(&mut self, subsystem: BackgroundSubsystem) {
         match subsystem {
             BackgroundSubsystem::ConciergeWork => {
                 self.concierge_work = self.concierge_work.saturating_sub(1);
@@ -191,11 +191,11 @@ impl BackgroundPendingCounts {
         }
     }
 
-    pub(super) fn note_rejection(&self, subsystem: BackgroundSubsystem) {
+    pub(crate) fn note_rejection(&self, subsystem: BackgroundSubsystem) {
         subsystem_metrics().record_rejection(subsystem);
     }
 
-    pub(super) fn any(&self) -> bool {
+    pub(crate) fn any(&self) -> bool {
         self.concierge_work > 0
             || self.agent_work > 0
             || self.provider_io > 0

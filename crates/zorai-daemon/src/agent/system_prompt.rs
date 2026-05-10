@@ -6,10 +6,10 @@ use super::types::*;
 
 const LOCAL_SKILL_WORKFLOW_PROMPT: &str = "## Local Guidelines and Skills Workflow\n\
      - Zorai recommends local guidelines before skill discovery for non-trivial work; guidelines orchestrate which skills and checks fit the task type.\n\
-     - When guideline tools are available, call `discover_guidelines` with a very short intent query, then `read_guideline` for the best match before calling `discover_skills`.\n\
+     - When guideline tools are available, call `discover_guidelines` with a brief intent description (one short sentence describing what you're trying to accomplish), then `read_guideline` for the best match before calling `discover_skills`.\n\
      - Zorai runs local skill discovery before non-trivial work and surfaces the ranked result in the runtime prompt and workflow notices.\n\
      - Treat daemon discovery results as the source of truth instead of relying on raw `list_skills` output.\n\
-     - When you call `discover_skills`, send a very short intent query first: usually 3-6 words, not the full task transcript.\n\
+     - When you call `discover_skills`, send a brief intent description: one short sentence describing what you're trying to accomplish (e.g., 'modify python wheel builder for alternate compiler flag'), not the full task transcript and not a 2-3 word fragment. Descriptive sentences match better against semantic vectors and richer skill excerpts.\n\
      - If the top match is strong, call `read_skill` for the recommended skill before other substantial tools.\n\
     - Weak matches still point to the best-fit local workflow. Prefer `read_skill` for that candidate first, and use `justify_skill_skip` only if you intentionally bypass it or no local skill fits.\n\
      - When you need clarification or the operator must choose among options, call `ask_questions`. Do not ask clarifying questions in plain text when this tool fits.\n\
@@ -110,7 +110,7 @@ pub(super) fn build_system_prompt(
             "\n\n## Local Guidelines\n\
              - Guidelines root: {}\n\
              - Guidelines are documentation-only workflow orchestrators. They should be discovered and read before skill discovery when a task is non-trivial.\n\
-             - Use `discover_guidelines` with a brief 3-6 word intent query, then `read_guideline` for the best match. Follow its recommended skills, checks, and step order.\n\
+             - Use `discover_guidelines` with a brief intent description (one short sentence describing what you're trying to accomplish), then `read_guideline` for the best match. Follow its recommended skills, checks, and step order.\n\
              - Guidelines do not replace skills; they sit above skills and tell you which skills to consult and what failure modes to consider.\n\
              - When the operator asks for work on a directory or repository path, check for `AGENTS.md` in that directory and its nearest relevant parent when repo-specific guidance is likely relevant. If present, apply the instructions that matter, but do not turn reading `AGENTS.md` into a standalone plan step unless the task specifically requires it.\n\
 \n\
@@ -119,7 +119,7 @@ pub(super) fn build_system_prompt(
              - Generated skills: {}\n\
              - Curated local skills live directly under {} (zorai reference docs for terminals, browser, tasks, goals, memory, safety, etc.).\n\
              - Before non-trivial work, use `read_memory`, `read_user`, and `read_soul` when you need memory recall, read the relevant guideline first, then follow the daemon-provided skill discovery result for this turn.\n\
-             - If you call `discover_skills` directly, start with a brief 3-6 word intent query instead of pasting the whole task.\n\
+             - If you call `discover_skills` directly, start with a brief intent description (one short sentence describing what you're trying to accomplish) instead of pasting the whole task or sending a 2-3 word fragment.\n\
              - Strong matches require `read_skill` before other substantial tools.\n\
              - Weak matches still point to the best-fit local workflow. Prefer `read_skill` for that candidate first, and use `justify_skill_skip` only if you intentionally bypass it or no local skill fits.\n\
              - When you need clarification or the operator must choose among options, call `ask_questions`. Do not ask clarifying questions in plain text when this tool fits.\n\

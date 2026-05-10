@@ -1,8 +1,6 @@
 use super::part1::*;
-use super::part5_support::*;
 use super::*;
 use crate::agent::provider_auth_store;
-use crate::agent::types::{AgentMessage, MessageRole};
 use crate::test_support::EnvGuard;
 use std::collections::VecDeque;
 use std::sync::atomic::AtomicUsize;
@@ -10,7 +8,6 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tempfile::tempdir;
-use zorai_shared::providers::*;
 #[tokio::test]
 async fn request_invalid_responses_422_invalid_payload_is_classified_request_invalid() {
     let request_paths = Arc::new(Mutex::new(VecDeque::new()));

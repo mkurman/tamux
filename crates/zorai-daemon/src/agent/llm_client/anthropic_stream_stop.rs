@@ -1,4 +1,3 @@
-use super::*;
 #[derive(Debug, Clone, Default)]
 pub(crate) struct AnthropicStreamStopMetadata {
     pub(crate) stop_reason: Option<String>,

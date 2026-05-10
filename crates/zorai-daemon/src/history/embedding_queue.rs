@@ -1,7 +1,11 @@
 use super::*;
+use std::future::Future;
 
 const CLAIM_STALE_AFTER_SECS: i64 = 300;
 const EMBEDDING_JOB_CHUNK_MAX_CHARS: usize = 6_000;
+const EMBEDDING_WRITER_LOCK_RETRY_BASE_DELAY_MS: u64 = 250;
+const EMBEDDING_WRITER_LOCK_RETRY_MAX_DELAY_MS: u64 = 2_000;
+const EMBEDDING_WRITER_LOCK_RETRY_WINDOW_SECS: u64 = 15;
 
 #[derive(Debug, Clone)]
 pub(crate) struct EmbeddingJobInput {
@@ -106,6 +110,24 @@ fn chunk_id_for(base_chunk_id: &str, index: usize) -> String {
     } else {
         format!("{base_chunk_id}:{index}")
     }
+}
+
+fn is_retryable_embedding_writer_lock(error: &tokio_rusqlite::Error) -> bool {
+    let code_match = match error {
+        tokio_rusqlite::Error::Rusqlite(rusqlite::Error::SqliteFailure(code, _)) => {
+            let primary_code = code.extended_code & 0xff;
+            primary_code == 5 || primary_code == 6
+        }
+        _ => false,
+    };
+    if code_match {
+        return true;
+    }
+    let text = format!("{error:?}").to_ascii_lowercase();
+    text.contains("database is locked")
+        || text.contains("database table is locked")
+        || text.contains("database schema is locked")
+        || text.contains("database busy")
 }
 
 fn delete_stale_embedding_chunks(
@@ -462,14 +484,53 @@ pub(super) fn queue_embedding_deletions_on_connection(
 }
 
 impl HistoryStore {
+    async fn call_embedding_writer_with_retry<R, F, Fut>(
+        &self,
+        operation: &'static str,
+        mut make_call: F,
+    ) -> Result<R>
+    where
+        F: FnMut() -> Fut,
+        Fut: Future<Output = tokio_rusqlite::Result<R>>,
+    {
+        let started = std::time::Instant::now();
+        let mut attempt = 0usize;
+        loop {
+            match make_call().await {
+                Ok(value) => return Ok(value),
+                Err(error) if is_retryable_embedding_writer_lock(&error) => {
+                    let elapsed = started.elapsed();
+                    if elapsed >= std::time::Duration::from_secs(EMBEDDING_WRITER_LOCK_RETRY_WINDOW_SECS) {
+                        return Err(anyhow::anyhow!("{error}"));
+                    }
+                    attempt += 1;
+                    let delay_ms = EMBEDDING_WRITER_LOCK_RETRY_BASE_DELAY_MS
+                        .saturating_mul(1_u64 << (attempt - 1))
+                        .min(EMBEDDING_WRITER_LOCK_RETRY_MAX_DELAY_MS);
+                    tracing::warn!(
+                        operation,
+                        attempt,
+                        delay_ms,
+                        elapsed_ms = elapsed.as_millis() as u64,
+                        error = %error,
+                        "embedding writer hit SQLite lock; retrying"
+                    );
+                    tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                }
+                Err(error) => return Err(anyhow::anyhow!("{error}")),
+            }
+        }
+    }
+
     pub(crate) async fn enqueue_embedding_job(&self, job: EmbeddingJobInput) -> Result<()> {
-        self.embedding_writer_conn
-            .call(move |conn| {
+        self.call_embedding_writer_with_retry("enqueue_embedding_job", || {
+            let job = job.clone();
+            self.embedding_writer_conn.call(move |conn| {
                 enqueue_embedding_job_on_connection(conn, &job, now_ts() as i64)?;
                 Ok(())
             })
-            .await
-            .map_err(|e| anyhow::anyhow!("{e}"))
+        })
+        .await
     }
 
     pub(crate) async fn claim_embedding_jobs(
@@ -484,8 +545,9 @@ impl HistoryStore {
         }
         let limit = limit.min(512) as i64;
         let dimensions = dimensions as i64;
-        self.embedding_writer_conn
-            .call(move |conn| {
+        self.call_embedding_writer_with_retry("claim_embedding_jobs", || {
+            let embedding_model = embedding_model.clone();
+            self.embedding_writer_conn.call(move |conn| {
                 let transaction = conn.transaction()?;
                 let now = now_ts() as i64;
                 let stale_before = now.saturating_sub(CLAIM_STALE_AFTER_SECS);
@@ -539,8 +601,8 @@ impl HistoryStore {
                 transaction.commit()?;
                 Ok(jobs)
             })
+            })
             .await
-            .map_err(|e| anyhow::anyhow!("{e}"))
     }
 
     pub(crate) async fn complete_embedding_job(
@@ -552,8 +614,10 @@ impl HistoryStore {
         let job = job.clone();
         let embedding_model = embedding_model.trim().to_string();
         let dimensions = dimensions as i64;
-        self.embedding_writer_conn
-            .call(move |conn| {
+        self.call_embedding_writer_with_retry("complete_embedding_job", || {
+            let job = job.clone();
+            let embedding_model = embedding_model.clone();
+            self.embedding_writer_conn.call(move |conn| {
                 let transaction = conn.transaction()?;
                 transaction.execute(
                     "INSERT OR REPLACE INTO embedding_job_completions (
@@ -584,15 +648,17 @@ impl HistoryStore {
                 transaction.commit()?;
                 Ok(())
             })
-            .await
-            .map_err(|e| anyhow::anyhow!("{e}"))
+        })
+        .await
     }
 
     pub(crate) async fn fail_embedding_job(&self, job: &EmbeddingJob, error: &str) -> Result<()> {
         let job = job.clone();
         let error = error.chars().take(2000).collect::<String>();
-        self.embedding_writer_conn
-            .call(move |conn| {
+        self.call_embedding_writer_with_retry("fail_embedding_job", || {
+            let job = job.clone();
+            let error = error.clone();
+            self.embedding_writer_conn.call(move |conn| {
                 conn.execute(
                     "UPDATE embedding_jobs
                      SET claimed_at = ?4, last_error = ?5
@@ -607,8 +673,8 @@ impl HistoryStore {
                 )?;
                 Ok(())
             })
+            })
             .await
-            .map_err(|e| anyhow::anyhow!("{e}"))
     }
 
     pub(crate) async fn complete_embedding_jobs(
@@ -623,8 +689,10 @@ impl HistoryStore {
         let jobs = jobs.to_vec();
         let embedding_model = embedding_model.trim().to_string();
         let dimensions = dimensions as i64;
-        self.embedding_writer_conn
-            .call(move |conn| {
+        self.call_embedding_writer_with_retry("complete_embedding_jobs", || {
+            let jobs = jobs.clone();
+            let embedding_model = embedding_model.clone();
+            self.embedding_writer_conn.call(move |conn| {
                 let transaction = conn.transaction()?;
                 let now = now_ts() as i64;
                 for job in &jobs {
@@ -658,8 +726,8 @@ impl HistoryStore {
                 transaction.commit()?;
                 Ok(())
             })
+            })
             .await
-            .map_err(|e| anyhow::anyhow!("{e}"))
     }
 
     pub(crate) async fn fail_embedding_jobs(
@@ -672,8 +740,10 @@ impl HistoryStore {
         }
         let jobs = jobs.to_vec();
         let error = error.chars().take(2000).collect::<String>();
-        self.embedding_writer_conn
-            .call(move |conn| {
+        self.call_embedding_writer_with_retry("fail_embedding_jobs", || {
+            let jobs = jobs.clone();
+            let error = error.clone();
+            self.embedding_writer_conn.call(move |conn| {
                 let transaction = conn.transaction()?;
                 let now = now_ts() as i64;
                 for job in &jobs {
@@ -693,8 +763,8 @@ impl HistoryStore {
                 transaction.commit()?;
                 Ok(())
             })
+            })
             .await
-            .map_err(|e| anyhow::anyhow!("{e}"))
     }
 
     pub(crate) async fn claim_embedding_deletions(
@@ -705,8 +775,8 @@ impl HistoryStore {
             return Ok(Vec::new());
         }
         let limit = limit.min(512) as i64;
-        self.embedding_writer_conn
-            .call(move |conn| {
+        self.call_embedding_writer_with_retry("claim_embedding_deletions", || {
+            self.embedding_writer_conn.call(move |conn| {
                 let transaction = conn.transaction()?;
                 let now = now_ts() as i64;
                 let stale_before = now.saturating_sub(CLAIM_STALE_AFTER_SECS);
@@ -737,8 +807,8 @@ impl HistoryStore {
                 transaction.commit()?;
                 Ok(deletions)
             })
+            })
             .await
-            .map_err(|e| anyhow::anyhow!("{e}"))
     }
 
     pub(crate) async fn complete_embedding_deletion(
@@ -746,16 +816,17 @@ impl HistoryStore {
         deletion: &EmbeddingDeletion,
     ) -> Result<()> {
         let deletion = deletion.clone();
-        self.embedding_writer_conn
-            .call(move |conn| {
+        self.call_embedding_writer_with_retry("complete_embedding_deletion", || {
+            let deletion = deletion.clone();
+            self.embedding_writer_conn.call(move |conn| {
                 conn.execute(
                     "DELETE FROM embedding_deletions WHERE source_kind = ?1 AND source_id = ?2",
                     params![deletion.source_kind, deletion.source_id],
                 )?;
                 Ok(())
             })
-            .await
-            .map_err(|e| anyhow::anyhow!("{e}"))
+        })
+        .await
     }
 
     pub(crate) async fn fail_embedding_deletion(
@@ -765,8 +836,10 @@ impl HistoryStore {
     ) -> Result<()> {
         let deletion = deletion.clone();
         let error = error.chars().take(2000).collect::<String>();
-        self.embedding_writer_conn
-            .call(move |conn| {
+        self.call_embedding_writer_with_retry("fail_embedding_deletion", || {
+            let deletion = deletion.clone();
+            let error = error.clone();
+            self.embedding_writer_conn.call(move |conn| {
                 conn.execute(
                     "UPDATE embedding_deletions
                      SET claimed_at = ?3, last_error = ?4
@@ -780,8 +853,8 @@ impl HistoryStore {
                 )?;
                 Ok(())
             })
+            })
             .await
-            .map_err(|e| anyhow::anyhow!("{e}"))
     }
 
     pub async fn queue_semantic_backfill(
@@ -789,8 +862,8 @@ impl HistoryStore {
         limit: Option<usize>,
     ) -> Result<SemanticBackfillResult> {
         let limit = limit.unwrap_or(usize::MAX).max(1);
-        self.embedding_writer_conn
-            .call(move |conn| {
+        self.call_embedding_writer_with_retry("queue_semantic_backfill", || {
+            self.embedding_writer_conn.call(move |conn| {
                 let transaction = conn.transaction()?;
                 let now = now_ts() as i64;
                 let mut remaining = limit;
@@ -905,15 +978,15 @@ impl HistoryStore {
                     tasks_queued,
                 })
             })
-            .await
-            .map_err(|e| anyhow::anyhow!("{e}"))
+        })
+        .await
     }
 
     pub(crate) async fn reset_semantic_vector_index_state(
         &self,
     ) -> Result<SemanticIndexRepairStateReset> {
-        self.embedding_writer_conn
-            .call(move |conn| {
+        self.call_embedding_writer_with_retry("reset_semantic_vector_index_state", || {
+            self.embedding_writer_conn.call(move |conn| {
                 let transaction = conn.transaction()?;
                 let cleared_completions = count_i64(
                     &transaction,
@@ -944,8 +1017,8 @@ impl HistoryStore {
                     reset_failed_jobs,
                 })
             })
-            .await
-            .map_err(|e| anyhow::anyhow!("{e}"))
+        })
+        .await
     }
 
     pub async fn semantic_index_status(

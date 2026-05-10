@@ -428,6 +428,139 @@ async fn persisted_compaction_broadcasts_post_compaction_context_window_update()
     }
 }
 
+#[tokio::test]
+async fn persisted_compaction_appends_artifact_at_end_resetting_active_window() {
+    let root = tempdir().expect("tempdir");
+    let manager = SessionManager::new_test(root.path()).await;
+    let mut config = AgentConfig::default();
+    config.auto_compact_context = true;
+    config.max_context_messages = 2;
+    config.keep_recent_on_compact = 1;
+    config.compaction.strategy = CompactionStrategy::Heuristic;
+    let engine = AgentEngine::new_test(manager, config.clone(), root.path()).await;
+    let provider = sample_provider_config();
+    let thread_id = "thread-compaction-end-artifact";
+
+    {
+        let mut threads = engine.threads.write().await;
+        let mut thread = sample_thread(vec![
+            AgentMessage::user("A".repeat(4_000), 1),
+            AgentMessage::user("B".repeat(4_000), 2),
+            AgentMessage::user("C".repeat(80), 3),
+        ]);
+        thread.id = thread_id.to_string();
+        threads.insert(thread_id.to_string(), thread);
+    }
+
+    let inserted = engine
+        .maybe_persist_compaction_artifact(thread_id, None, &config, &provider)
+        .await
+        .expect("compaction should persist");
+    assert!(inserted);
+
+    let thread = {
+        let threads = engine.threads.read().await;
+        threads
+            .get(thread_id)
+            .cloned()
+            .expect("thread should remain available")
+    };
+    let last = thread
+        .messages
+        .last()
+        .expect("compaction must leave at least one message");
+    assert!(
+        message_is_compaction_summary(last),
+        "the LAST message must be the compaction artifact so active_compaction_window returns [artifact] only and the LLM stops re-receiving old tool calls — got role={:?} kind={:?}",
+        last.role, last.message_kind
+    );
+    let (window_start, active_messages) = active_compaction_window(&thread.messages);
+    assert_eq!(
+        active_messages.len(),
+        1,
+        "active window must be exactly [artifact] right after compaction — got {} messages starting at {}",
+        active_messages.len(),
+        window_start
+    );
+    assert!(
+        message_is_compaction_summary(&active_messages[0]),
+        "the only active message must be the compaction artifact"
+    );
+    let max_source_ts = thread
+        .messages
+        .iter()
+        .filter(|m| !message_is_compaction_summary(m))
+        .map(|m| m.timestamp)
+        .max()
+        .unwrap_or(0);
+    assert!(
+        active_messages[0].timestamp >= max_source_ts,
+        "compaction artifact timestamp ({}) must be >= max source timestamp ({}); otherwise persist_thread_snapshot's `timestamp >= cutoff_ts` filter drops it from the DB and the next reload silently removes it from in-memory state",
+        active_messages[0].timestamp,
+        max_source_ts
+    );
+}
+
+#[tokio::test]
+async fn persisted_compaction_keeps_single_transcript_entry_for_the_compaction_event() {
+    let root = tempdir().expect("tempdir");
+    let manager = SessionManager::new_test(root.path()).await;
+    let mut config = AgentConfig::default();
+    config.auto_compact_context = true;
+    config.max_context_messages = 2;
+    config.keep_recent_on_compact = 1;
+    config.compaction.strategy = CompactionStrategy::Heuristic;
+    let engine = AgentEngine::new_test(manager, config.clone(), root.path()).await;
+    let provider = sample_provider_config();
+    let thread_id = "thread-single-compaction-transcript-entry";
+
+    {
+        let mut threads = engine.threads.write().await;
+        let mut thread = sample_thread(vec![
+            AgentMessage::user("A".repeat(4_000), 1),
+            AgentMessage::user("B".repeat(4_000), 2),
+            AgentMessage::user("C".repeat(80), 3),
+        ]);
+        thread.id = thread_id.to_string();
+        threads.insert(thread_id.to_string(), thread);
+    }
+
+    let inserted = engine
+        .maybe_persist_compaction_artifact(thread_id, None, &config, &provider)
+        .await
+        .expect("compaction should persist");
+
+    assert!(inserted);
+
+    let thread = {
+        let threads = engine.threads.read().await;
+        threads
+            .get(thread_id)
+            .cloned()
+            .expect("thread should remain available")
+    };
+
+    let compaction_entries = thread
+        .messages
+        .iter()
+        .filter(|message| {
+            message_is_compaction_summary(message)
+                || (message.role == MessageRole::System
+                    && message.content.contains("compaction applied:"))
+        })
+        .count();
+
+    assert_eq!(
+        compaction_entries, 1,
+        "compaction should leave one transcript entry, got messages: {:?}",
+        thread
+            .messages
+            .iter()
+            .map(|message| (&message.role, &message.message_kind, message.content.as_str()))
+            .collect::<Vec<_>>()
+    );
+}
+
 #[test]
 fn llm_compaction_messages_receive_scope_packet_and_tool_evidence_pointers() {
     let polluted_payload = r#"[
@@ -651,7 +784,7 @@ fn heuristic_message_count_alone_still_triggers_compaction() {
 }
 
 #[test]
-fn custom_model_message_count_alone_triggers_compaction() {
+fn custom_model_message_count_alone_does_not_trigger_compaction() {
     let mut config = AgentConfig::default();
     config.compaction.strategy = CompactionStrategy::CustomModel;
     config.max_context_messages = 100;
@@ -667,10 +800,10 @@ fn custom_model_message_count_alone_triggers_compaction() {
         .map(|idx| AgentMessage::user(format!("m{idx}"), idx as u64 + 1))
         .collect::<Vec<_>>();
 
-    let candidate = compaction_candidate(&messages, &config, &provider).expect(
-        "CustomModel strategy must compact when message count exceeds max_context_messages",
+    assert!(
+        compaction_candidate(&messages, &config, &provider).is_none(),
+        "CustomModel strategy must not compact on message count alone — token threshold is the only automatic trigger for model-backed strategies",
     );
-    assert_eq!(candidate.trigger, CompactionTrigger::MessageCount);
 }
 
 #[test]
@@ -757,7 +890,7 @@ fn compaction_llm_failure_with_capacity_is_downcastable_from_anyhow() {
 }
 
 #[test]
-fn weles_message_count_alone_triggers_compaction() {
+fn weles_message_count_alone_does_not_trigger_compaction() {
     let mut config = AgentConfig::default();
     config.compaction.strategy = CompactionStrategy::Weles;
     config.max_context_messages = 100;
@@ -774,9 +907,10 @@ fn weles_message_count_alone_triggers_compaction() {
         .map(|idx| AgentMessage::user(format!("m{idx}"), idx as u64 + 1))
         .collect::<Vec<_>>();
 
-    let candidate = compaction_candidate(&messages, &config, &provider)
-        .expect("Weles strategy must compact when message count exceeds max_context_messages");
-    assert_eq!(candidate.trigger, CompactionTrigger::MessageCount);
+    assert!(
+        compaction_candidate(&messages, &config, &provider).is_none(),
+        "Weles strategy must not compact on message count alone — token threshold is the only automatic trigger for model-backed strategies",
+    );
 }
 
 #[test]

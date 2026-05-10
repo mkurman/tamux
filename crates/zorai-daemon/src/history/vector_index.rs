@@ -178,11 +178,22 @@ impl VectorIndex {
         let Some(table) = self.open_existing_table().await? else {
             return Ok(());
         };
-        let predicate = sources
-            .iter()
-            .map(|(source_kind, source_id)| {
-                let prefix = format!("{}:{}:", source_kind.as_str(), source_id);
-                format!("source_key LIKE {}", sql_quote(&format!("{prefix}%")))
+        let mut by_kind: std::collections::BTreeMap<&'static str, Vec<String>> =
+            std::collections::BTreeMap::new();
+        for (source_kind, source_id) in sources {
+            by_kind
+                .entry(source_kind.as_str())
+                .or_default()
+                .push(source_id);
+        }
+        let predicate = by_kind
+            .into_iter()
+            .map(|(source_kind_str, source_ids)| {
+                format!(
+                    "(source_kind = {} AND source_id IN ({}))",
+                    sql_quote(source_kind_str),
+                    sql_list(&source_ids)
+                )
             })
             .collect::<Vec<_>>()
             .join(" OR ");

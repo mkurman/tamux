@@ -1,14 +1,4 @@
-use super::part1::*;
-use super::part5_support::*;
 use super::*;
-use crate::agent::provider_auth_store;
-use crate::agent::types::{AgentMessage, MessageRole};
-use crate::test_support::EnvGuard;
-use std::collections::VecDeque;
-use std::sync::atomic::AtomicUsize;
-use std::sync::Arc;
-use std::sync::Mutex;
-use tempfile::tempdir;
 #[tokio::test]
 async fn anthropic_response_header_request_id_is_forwarded_on_done_chunk() {
     use tokio::io::AsyncWriteExt;

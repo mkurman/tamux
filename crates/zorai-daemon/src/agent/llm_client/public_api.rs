@@ -395,6 +395,7 @@ pub(crate) fn send_completion_request_with_options(
     CompletionStream { rx }
 }
 
+#[allow(dead_code)]
 pub async fn count_request_tokens(
     client: &reqwest::Client,
     provider: &str,

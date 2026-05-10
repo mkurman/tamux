@@ -1,8 +1,5 @@
 use super::whatsapp_modal_esc_sends_stop_and_closes_to_clicking_rendered_settings::*;
 use crate::app::*;
-use crate::state::*;
-use std::sync::mpsc;
-use tokio::sync::mpsc::unbounded_channel;
 use zorai_shared::providers::*;
 #[test]
 fn thread_picker_playgrounds_new_row_is_browse_only() {

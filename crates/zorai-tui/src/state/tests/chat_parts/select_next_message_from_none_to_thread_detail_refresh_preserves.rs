@@ -1,4 +1,3 @@
-use super::*;
 use crate::state::chat::*;
 pub(super) fn state_with_messages(count: usize) -> ChatState {
     let mut state = ChatState::new();
