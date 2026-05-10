@@ -81,45 +81,10 @@ impl AgentEngine {
                 config,
                 structural_memory.as_ref(),
                 compaction_scope.as_ref(),
+                mode,
             )
             .await;
-        let (artifact, strategy_used, fallback_notice) = match artifact_result {
-            Ok(value) => value,
-            Err(error) => {
-                if let Some(typed) =
-                    error.downcast_ref::<CompactionLlmFailureWithCapacity>()
-                {
-                    tracing::warn!(
-                        thread_id,
-                        strategy = ?typed.strategy,
-                        provider_id = %typed.provider_id,
-                        model_window_tokens = typed.model_window_tokens,
-                        input_tokens = typed.input_tokens,
-                        cause = %typed.source,
-                        "compaction LLM call failed despite model capacity; not falling back to heuristic"
-                    );
-                    let _ = self.event_tx.send(AgentEvent::WorkflowNotice {
-                        thread_id: thread_id.to_string(),
-                        kind: "compaction-llm-failure".to_string(),
-                        message: format!(
-                            "{:?} compaction model `{}` failed with capacity available — skipping compaction this turn so the failure is visible. Cause: {}",
-                            typed.strategy, typed.provider_id, typed.source,
-                        ),
-                        details: Some(
-                            serde_json::json!({
-                                "strategy": format!("{:?}", typed.strategy),
-                                "provider_id": typed.provider_id,
-                                "model_window_tokens": typed.model_window_tokens,
-                                "input_tokens": typed.input_tokens,
-                            })
-                            .to_string(),
-                        ),
-                    });
-                    return Ok(false);
-                }
-                return Err(error);
-            }
-        };
+        let (artifact, strategy_used, fallback_notice) = artifact_result?;
         let compaction_trigger_summary = build_compaction_visible_content(
             pre_compaction_total_tokens,
             effective_context_window_tokens,
@@ -133,8 +98,9 @@ impl AgentEngine {
             let Some(thread) = threads.get_mut(thread_id) else {
                 return Ok(false);
             };
-            let (window_start, _) = active_compaction_window(&thread.messages);
-            let Some(current_candidate) = (match mode {
+            // Re-validate that compaction is still needed — guard against
+            // races where the candidate disappears between build and persist.
+            let Some(_recheck_candidate) = (match mode {
                 CompactionCandidateMode::Automatic => {
                     compaction_candidate(&thread.messages, config, provider_config)
                 }
@@ -144,8 +110,14 @@ impl AgentEngine {
             }) else {
                 return Ok(false);
             };
-            let current_split_at = window_start + current_candidate.split_at;
-            thread.messages.insert(current_split_at, artifact);
+            // Append artifact at END so active_compaction_window returns only
+            // [artifact, ...messages_added_after_compaction]. Old tool calls
+            // and tool results stay in thread.messages BEFORE the artifact —
+            // visible in chat for scroll-back, but excluded from LLM context.
+            // This is the user's "clear messages context to 0 + compaction"
+            // semantic: no old tool call/result re-shipping every turn.
+            let current_split_at = thread.messages.len();
+            thread.messages.push(artifact);
             thread.updated_at = now_millis();
             thread.total_input_tokens = thread
                 .messages
@@ -159,10 +131,33 @@ impl AgentEngine {
                 .sum();
             (current_split_at, thread.messages.len())
         };
+        // Snapshot the post-compaction active-window state. With the artifact
+        // appended at the end of thread.messages, `active_compaction_window`
+        // returns just `[artifact]` — old kept_recent stays in chat for display
+        // but isn't part of the LLM-bound active window anymore.
+        let (post_compaction_window_start, post_compaction_window_end, post_compaction_total_tokens, total_message_count) = {
+            let threads = self.threads.read().await;
+            match threads.get(thread_id) {
+                Some(thread) => {
+                    let (window_start, active_messages) =
+                        active_compaction_window(&thread.messages);
+                    (
+                        window_start,
+                        thread.messages.len(),
+                        estimate_message_tokens(active_messages) as u64,
+                        thread.messages.len(),
+                    )
+                }
+                None => (current_split_at, total_message_count, 0u64, total_message_count),
+            }
+        };
         let compaction_notice_details = serde_json::json!({
             "split_at": current_split_at,
             "total_message_count": total_message_count,
             "pre_compaction_total_tokens": pre_compaction_total_tokens,
+            "post_compaction_total_tokens": post_compaction_total_tokens,
+            "post_compaction_window_start": post_compaction_window_start,
+            "post_compaction_window_end": post_compaction_window_end,
             "effective_context_window_tokens": effective_context_window_tokens,
             "target_tokens": candidate.target_tokens,
             "trigger": compaction_trigger_detail_value(candidate.trigger),
@@ -243,17 +238,24 @@ impl AgentEngine {
                 details: Some(compaction_notice_details),
             });
         }
-        if let Some(thread) = self.threads.read().await.get(thread_id) {
-            let (active_context_window_start, active_messages) =
-                active_compaction_window(&thread.messages);
-            let active_context_window_tokens = estimate_message_tokens(active_messages) as u64;
-            let _ = self.event_tx.send(AgentEvent::ContextWindowUpdate {
-                thread_id: thread_id.to_string(),
-                active_context_window_start,
-                active_context_window_end: thread.messages.len(),
-                active_context_window_tokens,
-            });
-        }
+        tracing::info!(
+            thread_id,
+            mode = ?mode,
+            strategy = ?strategy_used,
+            split_at = current_split_at,
+            total_messages = total_message_count,
+            pre_compaction_total_tokens,
+            post_compaction_total_tokens,
+            target_tokens = candidate.target_tokens,
+            effective_context_window_tokens,
+            "compaction broadcast: post-compaction snapshot computed and ContextWindowUpdate emitted"
+        );
+        let _ = self.event_tx.send(AgentEvent::ContextWindowUpdate {
+            thread_id: thread_id.to_string(),
+            active_context_window_start: post_compaction_window_start,
+            active_context_window_end: post_compaction_window_end,
+            active_context_window_tokens: post_compaction_total_tokens,
+        });
         Ok(true)
     }
 
@@ -425,14 +427,19 @@ impl AgentEngine {
         self.enqueue_visible_thread_continuation(thread_id, continuation)
             .await;
 
+        let starting_message = if was_streaming {
+            "Manual compaction requested; waiting for the current stream to stop."
+        } else {
+            "Manual compaction starting..."
+        };
+        let _ = self.event_tx.send(AgentEvent::WorkflowNotice {
+            thread_id: thread_id.to_string(),
+            kind: MANUAL_COMPACTION_NOTICE_KIND.to_string(),
+            message: starting_message.to_string(),
+            details: None,
+        });
+
         if was_streaming && self.stop_stream(thread_id).await {
-            let _ = self.event_tx.send(AgentEvent::WorkflowNotice {
-                thread_id: thread_id.to_string(),
-                kind: MANUAL_COMPACTION_NOTICE_KIND.to_string(),
-                message: "Manual compaction requested; waiting for the current stream to stop."
-                    .to_string(),
-                details: None,
-            });
             return Ok(true);
         }
 

@@ -1046,5 +1046,14 @@ pub(super) fn extended_schema_sql() -> &'static str {
             );
             CREATE INDEX IF NOT EXISTS idx_thread_skill_reads_lookup
                 ON thread_skill_reads(thread_id, kind, read_count DESC, last_read_at DESC);
+
+            CREATE TABLE IF NOT EXISTS discoverable_guideline_documents (
+                relative_path  TEXT PRIMARY KEY,
+                excerpt        TEXT NOT NULL,
+                last_seen_at   INTEGER NOT NULL,
+                updated_at     INTEGER NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_discoverable_guideline_documents_seen
+                ON discoverable_guideline_documents(last_seen_at DESC);
     "#
 }

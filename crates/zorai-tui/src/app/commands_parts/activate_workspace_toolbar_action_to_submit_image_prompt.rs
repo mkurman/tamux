@@ -336,9 +336,16 @@ impl TuiModel {
             }
             "compact" => {
                 let Some(thread_id) = self.chat.active_thread_id().map(str::to_string) else {
-                    self.status_line = "Open a thread first, then run /compact".to_string();
+                    self.status_line = "Start or load thread first".to_string();
+                    self.show_input_notice(
+                        "Start or load thread first",
+                        InputNoticeKind::Warning,
+                        90,
+                        false,
+                    );
                     return;
                 };
+                self.set_agent_activity_for(Some(thread_id.clone()), "compacting");
                 self.send_daemon_command(DaemonCommand::ForceCompact { thread_id });
                 self.status_line = "Forcing compaction...".to_string();
             }

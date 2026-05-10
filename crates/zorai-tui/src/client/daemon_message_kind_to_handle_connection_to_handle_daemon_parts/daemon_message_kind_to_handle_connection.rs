@@ -18,6 +18,8 @@ use tokio::sync::mpsc;
 use tokio::time::{Instant, MissedTickBehavior};
 use tokio_util::codec::Framed;
 use tracing::{debug, error, info, warn};
+#[cfg(not(unix))]
+use zorai_protocol::default_tcp_addr;
 use zorai_protocol::{ClientMessage, DaemonMessage, ZoraiCodec};
 impl DaemonClient {
     fn daemon_message_kind(message: &DaemonMessage) -> &'static str {

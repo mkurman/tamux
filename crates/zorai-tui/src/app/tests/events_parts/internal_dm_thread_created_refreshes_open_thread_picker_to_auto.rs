@@ -399,7 +399,15 @@ fn auto_compaction_workflow_notice_requests_active_compaction_window() {
 }
 
 #[test]
-fn auto_compaction_workflow_notice_invalidates_header_context_usage() {
+fn auto_compaction_workflow_notice_applies_post_compaction_tokens_when_present() {
+    // Why this matters: the user reported the header staying at 100% after
+    // compaction. The pre-compaction value was already clamped (oversized
+    // history → over the model window → clamps to 100%), and we used to either
+    // null tokens (causing a 0% flash) or preserve the stale clamped value
+    // (causing the 100% stuck-state the user saw). The daemon now publishes
+    // post_compaction_total_tokens in the WorkflowNotice details so the TUI
+    // can drop the header to the new value immediately, without waiting for
+    // the separate ContextWindowUpdate event.
     let (mut model, mut daemon_rx) = make_model_with_daemon_rx();
 
     model.handle_thread_detail_event(crate::wire::AgentThread {
@@ -433,13 +441,63 @@ fn auto_compaction_workflow_notice_invalidates_header_context_usage() {
         thread_id: Some("thread-compaction".to_string()),
         kind: "auto-compaction".to_string(),
         message: "Auto compaction applied using heuristic.".to_string(),
+        details: Some(
+            "{\"split_at\":20,\"total_message_count\":122,\"post_compaction_total_tokens\":4800,\"post_compaction_window_start\":20,\"post_compaction_window_end\":122}"
+                .to_string(),
+        ),
+    });
+
+    assert_eq!(
+        model.current_header_usage_summary().current_tokens,
+        4_800,
+        "header must drop to post-compaction tokens immediately when the daemon includes them in the notice details"
+    );
+    assert!(matches!(
+        next_thread_request(&mut daemon_rx),
+        Some((thread_id, Some(102), Some(0))) if thread_id == "thread-compaction"
+    ));
+}
+
+#[test]
+fn auto_compaction_workflow_notice_keeps_last_known_tokens_when_post_compaction_missing() {
+    // Backwards-compatibility safety net: if the daemon ever omits the
+    // post-compaction token data (older daemon, race), the TUI must keep the
+    // last-known value rather than null it — that was the previous 0%-flash bug.
+    let (mut model, mut daemon_rx) = make_model_with_daemon_rx();
+
+    model.handle_thread_detail_event(crate::wire::AgentThread {
+        id: "thread-compaction".to_string(),
+        title: "Compaction".to_string(),
+        total_message_count: 121,
+        loaded_message_start: 0,
+        loaded_message_end: 121,
+        active_context_window_start: Some(0),
+        active_context_window_end: Some(121),
+        active_context_window_tokens: Some(239_700_000),
+        messages: vec![crate::wire::AgentMessage {
+            role: crate::wire::MessageRole::User,
+            content: "before compaction".to_string(),
+            message_kind: "normal".to_string(),
+            ..Default::default()
+        }],
+        ..Default::default()
+    });
+    model.chat.reduce(chat::ChatAction::SelectThread(
+        "thread-compaction".to_string(),
+    ));
+    while daemon_rx.try_recv().is_ok() {}
+
+    model.handle_client_event(ClientEvent::WorkflowNotice {
+        thread_id: Some("thread-compaction".to_string()),
+        kind: "auto-compaction".to_string(),
+        message: "Auto compaction applied using heuristic.".to_string(),
         details: Some("{\"split_at\":20,\"total_message_count\":121}".to_string()),
     });
 
     assert_eq!(
         model.current_header_usage_summary().current_tokens,
-        0,
-        "compaction notice should clear stale daemon context tokens while the post-compaction detail reload is pending"
+        239_700_000,
+        "without post-compaction data in details, the TUI must preserve the last-known value rather than null it"
     );
     assert!(matches!(
         next_thread_request(&mut daemon_rx),

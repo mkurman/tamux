@@ -237,6 +237,39 @@ fn slash_compact_requests_forced_compaction_for_active_thread() {
         other => panic!("expected force-compaction request, got {:?}", other),
     }
     assert!(daemon_rx.try_recv().is_err());
+    // Why this matters: without an inline activity hint the user sees a "dead"
+    // TUI for the entire daemon round-trip. The render_status_bar widget
+    // ignores status_line entirely, so the only visible feedback channel is
+    // the per-thread agent_activity spinner in the input placeholder.
+    assert_eq!(
+        model.thread_agent_activity.get("thread-1").map(String::as_str),
+        Some("compacting"),
+        "/compact must surface 'compacting' on the per-thread agent activity so the spinner is visible while the daemon works"
+    );
+}
+
+#[test]
+fn slash_compact_without_active_thread_warns_to_start_or_load_thread_first() {
+    // Why this matters: the user explicitly asked for this wording. The previous
+    // status-line-only message was invisible (status_line is dead in the
+    // status bar widget); the input notice surfaces it where the user is
+    // already looking.
+    let (mut model, mut daemon_rx) = make_model();
+    model.connected = true;
+    model.input.set_text("/compact");
+
+    let quit = model.handle_key(KeyCode::Enter, KeyModifiers::NONE);
+
+    assert!(!quit);
+    assert!(
+        daemon_rx.try_recv().is_err(),
+        "no daemon request should be sent when no thread is open"
+    );
+    assert_eq!(
+        model.input_notice.as_ref().map(|notice| notice.text.as_str()),
+        Some("Start or load thread first"),
+        "no-thread case must show the explicit guard text as an input notice"
+    );
 }
 
 #[test]

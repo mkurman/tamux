@@ -32,6 +32,80 @@ fn compaction_artifact_lines_use_standard_message_left_padding() {
 }
 
 #[test]
+fn compaction_artifact_visible_header_renders_without_expand_toggle() {
+    // Why this matters: the user complained "I don't see compaction info in the
+    // chat anymore". The artifact previously collapsed to a single label line,
+    // hiding the trigger/strategy summary unless the user manually expanded it.
+    // The visible header (msg.content) must render as a banner by default so
+    // compaction events are obvious as you scroll back through history.
+    let chat = chat_with_messages(vec![AgentMessage {
+        role: MessageRole::Assistant,
+        content:
+            "Pre-compaction context: ~92,000 / 200,000 tokens (threshold 160,000)\nTrigger: token-threshold\nStrategy: rule based"
+                .into(),
+        message_kind: "compaction_artifact".into(),
+        ..Default::default()
+    }]);
+
+    let (lines, _) = build_rendered_lines(&chat, &ThemeTokens::default(), 80, 0, false);
+    let plain_lines = lines
+        .iter()
+        .map(rendered_line_plain_text)
+        .collect::<Vec<_>>();
+
+    assert!(
+        plain_lines
+            .iter()
+            .any(|line| line.contains("Pre-compaction context")),
+        "compaction trigger summary must be visible without expand toggle: {plain_lines:?}"
+    );
+    assert!(
+        plain_lines
+            .iter()
+            .any(|line| line.contains("Trigger: token-threshold")),
+        "compaction trigger must be visible without expand toggle: {plain_lines:?}"
+    );
+    assert!(
+        plain_lines.iter().any(|line| line.contains("Auto compaction")),
+        "automatic compaction must be labelled as 'Auto compaction': {plain_lines:?}"
+    );
+}
+
+#[test]
+fn manual_compaction_artifact_uses_manual_label() {
+    // Why this matters: distinguishing /compact from automatic compactions
+    // helps the user attribute context loss to their own action vs. a
+    // background trigger when reviewing thread history.
+    let chat = chat_with_messages(vec![AgentMessage {
+        role: MessageRole::Assistant,
+        content:
+            "Pre-compaction context: ~92,000 / 200,000 tokens (threshold 160,000)\nTrigger: manual-request\nStrategy: rule based"
+                .into(),
+        message_kind: "compaction_artifact".into(),
+        ..Default::default()
+    }]);
+
+    let (lines, _) = build_rendered_lines(&chat, &ThemeTokens::default(), 80, 0, false);
+    let plain_lines = lines
+        .iter()
+        .map(rendered_line_plain_text)
+        .collect::<Vec<_>>();
+
+    assert!(
+        plain_lines
+            .iter()
+            .any(|line| line.contains("Manual compaction")),
+        "manual compaction must be labelled as 'Manual compaction', not 'Auto compaction': {plain_lines:?}"
+    );
+    assert!(
+        plain_lines
+            .iter()
+            .all(|line| !line.contains("Auto compaction")),
+        "manual compaction must not also surface the auto label: {plain_lines:?}"
+    );
+}
+
+#[test]
 fn compaction_artifact_renders_trigger_summary_above_payload_preview() {
     let mut chat = chat_with_messages(vec![AgentMessage {
         role: MessageRole::Assistant,

@@ -19,6 +19,7 @@ pub(crate) struct HeaderUsageDisplay {
     pub(crate) current_tokens: u64,
     pub(crate) context_window_tokens: u64,
     pub(crate) compaction_target_tokens: u64,
+    pub(crate) compaction_model_window_tokens: Option<u64>,
     pub(crate) utilization_pct: u8,
     pub(crate) total_cost_usd: Option<f64>,
 }
@@ -288,6 +289,12 @@ fn context_usage_line(usage: &HeaderUsageDisplay, theme: &ThemeTokens) -> Line<'
     spans.push(Span::styled(format!("{pct}%"), fill_style));
     spans.push(Span::styled(" ", theme.fg_dim));
     spans.push(Span::styled(context_window, theme.fg_dim));
+    if let Some(compaction_window) = usage.compaction_model_window_tokens {
+        spans.push(Span::styled(
+            format!(" cmpct[{}]", format_token_count(compaction_window.max(1))),
+            theme.fg_dim,
+        ));
+    }
     Line::from(spans)
 }
 
@@ -408,6 +415,7 @@ mod tests {
                 current_tokens: 64_000,
                 context_window_tokens: 128_000,
                 compaction_target_tokens: 102_400,
+                compaction_model_window_tokens: None,
                 utilization_pct: 50,
                 total_cost_usd: Some(1.25),
             },
@@ -436,6 +444,7 @@ mod tests {
                 current_tokens: 240_000,
                 context_window_tokens: 400_000,
                 compaction_target_tokens: 320_000,
+                compaction_model_window_tokens: None,
                 utilization_pct: 60,
                 total_cost_usd: None,
             },
@@ -467,6 +476,7 @@ mod tests {
             current_tokens: 64_000,
             context_window_tokens: 400_000,
             compaction_target_tokens: 320_000,
+            compaction_model_window_tokens: None,
             utilization_pct: 16,
             total_cost_usd: Some(1.25),
         });
@@ -494,12 +504,72 @@ mod tests {
     }
 
     #[test]
+    fn context_usage_line_surfaces_compaction_model_window_when_present() {
+        // Why this matters: when the compaction model (Weles or CustomModel) has
+        // a smaller window than the main model, every input that exceeds it
+        // legitimately falls back to heuristic compaction. Without surfacing
+        // this in the header, the user has no way to understand why their
+        // configured LLM compaction never seems to run.
+        let theme = ThemeTokens::default();
+        let line = context_usage_line(
+            &HeaderUsageDisplay {
+                total_thread_tokens: 0,
+                current_tokens: 32_000,
+                context_window_tokens: 200_000,
+                compaction_target_tokens: 160_000,
+                compaction_model_window_tokens: Some(8_000),
+                utilization_pct: 16,
+                total_cost_usd: None,
+            },
+            &theme,
+        );
+        let plain: String = line
+            .spans
+            .iter()
+            .map(|span| span.content.as_ref())
+            .collect();
+        assert!(
+            plain.contains("cmpct[8.0k tok]"),
+            "compaction window must appear when configured smaller than primary: {plain}"
+        );
+    }
+
+    #[test]
+    fn context_usage_line_omits_compaction_model_window_when_absent() {
+        // Heuristic strategy has no separate compaction model — header should
+        // stay clean rather than render a redundant marker.
+        let theme = ThemeTokens::default();
+        let line = context_usage_line(
+            &HeaderUsageDisplay {
+                total_thread_tokens: 0,
+                current_tokens: 32_000,
+                context_window_tokens: 200_000,
+                compaction_target_tokens: 160_000,
+                compaction_model_window_tokens: None,
+                utilization_pct: 16,
+                total_cost_usd: None,
+            },
+            &theme,
+        );
+        let plain: String = line
+            .spans
+            .iter()
+            .map(|span| span.content.as_ref())
+            .collect();
+        assert!(
+            !plain.contains("cmpct"),
+            "no compaction marker should appear when None: {plain}"
+        );
+    }
+
+    #[test]
     fn context_usage_label_clamps_overflowing_progress_to_full_bar() {
         let label = build_context_usage_label(&HeaderUsageDisplay {
             total_thread_tokens: 21_000_000,
             current_tokens: 500_000,
             context_window_tokens: 400_000,
             compaction_target_tokens: 320_000,
+            compaction_model_window_tokens: None,
             utilization_pct: 100,
             total_cost_usd: None,
         });
@@ -522,6 +592,7 @@ mod tests {
                 current_tokens: 0,
                 context_window_tokens: 400_000,
                 compaction_target_tokens: 320_000,
+                compaction_model_window_tokens: None,
                 utilization_pct: 39,
                 total_cost_usd: None,
             }),
@@ -533,6 +604,7 @@ mod tests {
                 current_tokens: 0,
                 context_window_tokens: 400_000,
                 compaction_target_tokens: 320_000,
+                compaction_model_window_tokens: None,
                 utilization_pct: 55,
                 total_cost_usd: None,
             }),
@@ -544,6 +616,7 @@ mod tests {
                 current_tokens: 0,
                 context_window_tokens: 400_000,
                 compaction_target_tokens: 320_000,
+                compaction_model_window_tokens: None,
                 utilization_pct: 70,
                 total_cost_usd: None,
             }),
@@ -555,6 +628,7 @@ mod tests {
                 current_tokens: 0,
                 context_window_tokens: 400_000,
                 compaction_target_tokens: 320_000,
+                compaction_model_window_tokens: None,
                 utilization_pct: 90,
                 total_cost_usd: None,
             }),

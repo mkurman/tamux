@@ -490,7 +490,6 @@ fn append_message_to_thread(thread: &mut AgentThread, message: AgentMessage, pag
     thread.messages.push(message);
     thread.active_context_window_start = None;
     thread.active_context_window_end = None;
-    thread.active_context_window_tokens = None;
     thread.total_message_count = thread.total_message_count.saturating_add(1);
     thread.loaded_message_end = thread.total_message_count;
     thread.loaded_message_start = thread
@@ -1096,7 +1095,6 @@ impl ChatState {
                 };
                 thread.active_context_window_start = None;
                 thread.active_context_window_end = None;
-                thread.active_context_window_tokens = None;
                 normalize_thread_window(thread);
                 removed = true;
             }
@@ -1895,8 +1893,6 @@ impl ChatState {
                     thread.active_compaction_window_start = Some(active_compaction_window_start);
                     thread.active_context_window_start = None;
                     thread.active_context_window_end = None;
-                    thread.active_context_window_tokens = None;
-                    thread.latest_turn_context_tokens = None;
                     normalize_thread_window(thread);
                 }
             }

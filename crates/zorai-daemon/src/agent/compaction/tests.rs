@@ -428,6 +428,73 @@ async fn persisted_compaction_broadcasts_post_compaction_context_window_update()
     }
 }
 
+#[tokio::test]
+async fn persisted_compaction_appends_artifact_at_end_resetting_active_window() {
+    // Why this matters: the user's hard requirement is "after compaction, LLM
+    // context = artifact only, no old tool calls re-shipped." We achieve that
+    // by appending the compaction artifact at the END of thread.messages.
+    // `active_compaction_window` returns from the latest artifact onwards, so
+    // it returns just `[artifact]` — old kept_recent / tool calls / tool
+    // results stay in thread.messages BEFORE the artifact (visible in chat
+    // for scroll-back) but are excluded from the LLM-bound active window.
+    let root = tempdir().expect("tempdir");
+    let manager = SessionManager::new_test(root.path()).await;
+    let mut config = AgentConfig::default();
+    config.auto_compact_context = true;
+    config.max_context_messages = 2;
+    config.keep_recent_on_compact = 1;
+    config.compaction.strategy = CompactionStrategy::Heuristic;
+    let engine = AgentEngine::new_test(manager, config.clone(), root.path()).await;
+    let provider = sample_provider_config();
+    let thread_id = "thread-compaction-end-artifact";
+
+    {
+        let mut threads = engine.threads.write().await;
+        let mut thread = sample_thread(vec![
+            AgentMessage::user("A".repeat(4_000), 1),
+            AgentMessage::user("B".repeat(4_000), 2),
+            AgentMessage::user("C".repeat(80), 3),
+        ]);
+        thread.id = thread_id.to_string();
+        threads.insert(thread_id.to_string(), thread);
+    }
+
+    let inserted = engine
+        .maybe_persist_compaction_artifact(thread_id, None, &config, &provider)
+        .await
+        .expect("compaction should persist");
+    assert!(inserted);
+
+    let thread = {
+        let threads = engine.threads.read().await;
+        threads
+            .get(thread_id)
+            .cloned()
+            .expect("thread should remain available")
+    };
+    let last = thread
+        .messages
+        .last()
+        .expect("compaction must leave at least one message");
+    assert!(
+        message_is_compaction_summary(last),
+        "the LAST message must be the compaction artifact so active_compaction_window returns [artifact] only and the LLM stops re-receiving old tool calls — got role={:?} kind={:?}",
+        last.role, last.message_kind
+    );
+    let (window_start, active_messages) = active_compaction_window(&thread.messages);
+    assert_eq!(
+        active_messages.len(),
+        1,
+        "active window must be exactly [artifact] right after compaction — got {} messages starting at {}",
+        active_messages.len(),
+        window_start
+    );
+    assert!(
+        message_is_compaction_summary(&active_messages[0]),
+        "the only active message must be the compaction artifact"
+    );
+}
+
 #[test]
 fn llm_compaction_messages_receive_scope_packet_and_tool_evidence_pointers() {
     let polluted_payload = r#"[
