@@ -1,0 +1,64 @@
+{
+  "name": "huggingface-tools",
+  "version": "1.0.0",
+  "schema_version": 1,
+  "description": "HuggingFace local helpers — import CLI token, run DuckDB SQL over dataset parquet",
+  "author": "zorai",
+  "license": "MIT",
+  "zorai_version": ">=2.0.0",
+  "settings": {
+    "default_dataset_workdir": {
+      "type": "string",
+      "label": "Dataset workdir",
+      "required": false,
+      "secret": false,
+      "default": "~/.cache/zorai/hf-query",
+      "description": "Cache directory for downloaded parquet files"
+    },
+    "hf_token_file": {
+      "type": "string",
+      "label": "HF CLI token file",
+      "required": false,
+      "secret": false,
+      "default": "~/.cache/huggingface/token",
+      "description": "Override the location of the huggingface-cli token file"
+    }
+  },
+  "python": {
+    "env": true,
+    "dependencies": ["duckdb>=1.1", "pyarrow>=17", "requests>=2.32", "huggingface_hub>=0.24"]
+  },
+  "commands": {
+    "auth-import": {
+      "description": "Print the on-disk HF CLI token for pasting into the huggingface plugin settings",
+      "python": {
+        "command": "python scripts/hf_auth.py import"
+      }
+    },
+    "auth-login": {
+      "description": "Run huggingface-cli login interactively",
+      "python": {
+        "command": "python scripts/hf_auth.py login"
+      }
+    },
+    "auth-whoami": {
+      "description": "Show the HF identity associated with the on-disk token",
+      "python": {
+        "command": "python scripts/hf_auth.py whoami"
+      }
+    },
+    "query": {
+      "description": "Run DuckDB SQL over a HuggingFace dataset's parquet files",
+      "python": {
+        "command": "python scripts/hf_query.py query --dataset \"${HF_DATASET:?set HF_DATASET}\" --sql \"${HF_SQL:?set HF_SQL}\" ${HF_CONFIG:+--config $HF_CONFIG} ${HF_SPLIT:+--split $HF_SPLIT} ${HF_LIMIT:+--limit $HF_LIMIT}"
+      }
+    },
+    "query-schema": {
+      "description": "Show the parquet schema for a HuggingFace dataset split",
+      "python": {
+        "command": "python scripts/hf_query.py schema --dataset \"${HF_DATASET:?set HF_DATASET}\" ${HF_CONFIG:+--config $HF_CONFIG} ${HF_SPLIT:+--split $HF_SPLIT}"
+      }
+    }
+  },
+  "skills": ["skills/huggingface-tools.md"]
+}

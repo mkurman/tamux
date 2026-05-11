@@ -1,0 +1,362 @@
+{
+  "name": "huggingface",
+  "version": "1.0.0",
+  "schema_version": 1,
+  "description": "HuggingFace integration — search, fetch, deploy, run jobs, query datasets",
+  "author": "zorai",
+  "license": "MIT",
+  "zorai_version": ">=2.0.0",
+  "settings": {
+    "token": {
+      "type": "string",
+      "label": "HuggingFace Token",
+      "required": false,
+      "secret": true,
+      "description": "HF user/access token (hf_...). Required for write APIs; optional for read APIs (anonymous = rate-limited)."
+    },
+    "default_namespace": {
+      "type": "string",
+      "label": "Default namespace",
+      "required": false,
+      "secret": false,
+      "description": "Default user or org for endpoints/AutoTrain"
+    },
+    "default_endpoint_provider": {
+      "type": "string",
+      "label": "Default endpoint provider",
+      "required": false,
+      "secret": false,
+      "default": "aws",
+      "description": "Provider for new dedicated endpoints (aws/gcp/azure)"
+    },
+    "default_endpoint_region": {
+      "type": "string",
+      "label": "Default endpoint region",
+      "required": false,
+      "secret": false,
+      "default": "us-east-1",
+      "description": "Region for new dedicated endpoints"
+    }
+  },
+  "api": {
+    "base_url": "",
+    "endpoints": {
+      "check_health": {
+        "method": "GET",
+        "path": "https://huggingface.co/api/whoami-v2",
+        "headers": {
+          "Authorization": "Bearer {{settings.token}}"
+        },
+        "response_template": "## HuggingFace identity\n\n- User: {{name}}\n- Email verified: {{emailVerified}}\n- Plan: {{plan}}\n- Orgs: {{#each orgs}}{{name}}{{#unless @last}}, {{/unless}}{{/each}}"
+      },
+      "search_models": {
+        "method": "GET",
+        "path": "https://huggingface.co/api/models?search={{urlencode params.q}}&limit={{default params.limit \"20\"}}{{#if params.filter}}&filter={{urlencode params.filter}}{{/if}}{{#if params.sort}}&sort={{urlencode params.sort}}{{/if}}",
+        "headers": {
+          "Authorization": "Bearer {{settings.token}}"
+        },
+        "response_template": "## Models matching \"{{../params.q}}\"\n\n{{#each this}}- `{{id}}` — downloads: {{downloads}}, likes: {{likes}}, pipeline: {{pipeline_tag}}\n{{/each}}"
+      },
+      "search_datasets": {
+        "method": "GET",
+        "path": "https://huggingface.co/api/datasets?search={{urlencode params.q}}&limit={{default params.limit \"20\"}}{{#if params.filter}}&filter={{urlencode params.filter}}{{/if}}{{#if params.sort}}&sort={{urlencode params.sort}}{{/if}}",
+        "headers": {
+          "Authorization": "Bearer {{settings.token}}"
+        },
+        "response_template": "## Datasets matching \"{{../params.q}}\"\n\n{{#each this}}- `{{id}}` — downloads: {{downloads}}, likes: {{likes}}\n{{/each}}"
+      },
+      "search_spaces": {
+        "method": "GET",
+        "path": "https://huggingface.co/api/spaces?search={{urlencode params.q}}&limit={{default params.limit \"20\"}}{{#if params.filter}}&filter={{urlencode params.filter}}{{/if}}{{#if params.sort}}&sort={{urlencode params.sort}}{{/if}}",
+        "headers": {
+          "Authorization": "Bearer {{settings.token}}"
+        },
+        "response_template": "## Spaces matching \"{{../params.q}}\"\n\n{{#each this}}- `{{id}}` — likes: {{likes}}, SDK: {{sdk}}\n{{/each}}"
+      },
+      "get_model": {
+        "method": "GET",
+        "path": "https://huggingface.co/api/models/{{params.id}}",
+        "headers": {
+          "Authorization": "Bearer {{settings.token}}"
+        },
+        "response_template": "## Model `{{id}}`\n\n- Pipeline: {{pipeline_tag}}\n- Library: {{library_name}}\n- Downloads: {{downloads}}\n- Likes: {{likes}}\n- Tags: {{#each tags}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}\n- License: {{cardData.license}}\n\n### Files\n{{#each siblings}}- {{rfilename}}\n{{/each}}"
+      },
+      "get_dataset": {
+        "method": "GET",
+        "path": "https://huggingface.co/api/datasets/{{params.id}}",
+        "headers": {
+          "Authorization": "Bearer {{settings.token}}"
+        },
+        "response_template": "## Dataset `{{id}}`\n\n- Downloads: {{downloads}}\n- Likes: {{likes}}\n- Tags: {{#each tags}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}\n- License: {{cardData.license}}\n\n### Files\n{{#each siblings}}- {{rfilename}}\n{{/each}}"
+      },
+      "get_space": {
+        "method": "GET",
+        "path": "https://huggingface.co/api/spaces/{{params.id}}",
+        "headers": {
+          "Authorization": "Bearer {{settings.token}}"
+        },
+        "response_template": "## Space `{{id}}`\n\n- SDK: {{sdk}}\n- Likes: {{likes}}\n- Runtime stage: {{runtime.stage}}\n- Hardware: {{runtime.hardware.current}}\n- URL: https://huggingface.co/spaces/{{id}}"
+      },
+      "dataset_info": {
+        "method": "GET",
+        "path": "https://datasets-server.huggingface.co/info?dataset={{urlencode params.dataset}}",
+        "headers": {"Authorization": "Bearer {{settings.token}}"},
+        "response_template": "## Dataset info: {{dataset_info.dataset_name}}\n\nFull info:\n```json\n{{json dataset_info}}\n```"
+      },
+      "dataset_splits": {
+        "method": "GET",
+        "path": "https://datasets-server.huggingface.co/splits?dataset={{urlencode params.dataset}}",
+        "headers": {"Authorization": "Bearer {{settings.token}}"},
+        "response_template": "## Splits for `{{../params.dataset}}`\n\n{{#each splits}}- {{config}}/{{split}}\n{{/each}}"
+      },
+      "dataset_size": {
+        "method": "GET",
+        "path": "https://datasets-server.huggingface.co/size?dataset={{urlencode params.dataset}}",
+        "headers": {"Authorization": "Bearer {{settings.token}}"},
+        "response_template": "## Size for `{{../params.dataset}}`\n\nTotal rows: {{size.dataset.num_rows}}\n\n{{#each size.splits}}- {{config}}/{{split}}: {{num_rows}} rows, {{num_bytes_parquet_files}} bytes parquet\n{{/each}}"
+      },
+      "dataset_rows": {
+        "method": "GET",
+        "path": "https://datasets-server.huggingface.co/rows?dataset={{urlencode params.dataset}}&config={{urlencode params.config}}&split={{urlencode params.split}}&offset={{default params.offset \"0\"}}&length={{default params.length \"20\"}}",
+        "headers": {"Authorization": "Bearer {{settings.token}}"},
+        "response_template": "## Rows ({{../params.config}}/{{../params.split}}, offset {{../params.offset}})\n\n{{#each rows}}- {{json row}}\n{{/each}}"
+      },
+      "dataset_search": {
+        "method": "GET",
+        "path": "https://datasets-server.huggingface.co/search?dataset={{urlencode params.dataset}}&config={{urlencode params.config}}&split={{urlencode params.split}}&query={{urlencode params.query}}&offset={{default params.offset \"0\"}}&length={{default params.length \"20\"}}",
+        "headers": {"Authorization": "Bearer {{settings.token}}"},
+        "response_template": "## Search results for \"{{../params.query}}\"\n\n{{#each rows}}- {{json row}}\n{{/each}}"
+      },
+      "dataset_filter": {
+        "method": "GET",
+        "path": "https://datasets-server.huggingface.co/filter?dataset={{urlencode params.dataset}}&config={{urlencode params.config}}&split={{urlencode params.split}}&where={{urlencode params.where}}&offset={{default params.offset \"0\"}}&length={{default params.length \"20\"}}",
+        "headers": {"Authorization": "Bearer {{settings.token}}"},
+        "response_template": "## Filter results (`{{../params.where}}`)\n\n{{#each rows}}- {{json row}}\n{{/each}}"
+      },
+      "dataset_statistics": {
+        "method": "GET",
+        "path": "https://datasets-server.huggingface.co/statistics?dataset={{urlencode params.dataset}}&config={{urlencode params.config}}&split={{urlencode params.split}}",
+        "headers": {"Authorization": "Bearer {{settings.token}}"},
+        "response_template": "## Statistics for {{../params.config}}/{{../params.split}}\n\n{{#each statistics}}- **{{column_name}}** ({{column_type}}): {{json column_statistics}}\n{{/each}}"
+      },
+      "dataset_is_valid": {
+        "method": "GET",
+        "path": "https://datasets-server.huggingface.co/is-valid?dataset={{urlencode params.dataset}}",
+        "headers": {"Authorization": "Bearer {{settings.token}}"},
+        "response_template": "## Validity for `{{../params.dataset}}`\n\n- Viewer: {{viewer}}\n- Preview: {{preview}}\n- Search: {{search}}\n- Filter: {{filter}}\n- Statistics: {{statistics}}"
+      },
+      "run_inference": {
+        "method": "POST",
+        "path": "https://api-inference.huggingface.co/models/{{params.id}}",
+        "headers": {
+          "Authorization": "Bearer {{settings.token}}",
+          "Content-Type": "application/json",
+          "x-wait-for-model": "true"
+        },
+        "body": {
+          "inputs": "{{params.inputs}}"
+        },
+        "response_template": "## Inference output\n\n```json\n{{json this}}\n```"
+      },
+      "submit_async_inference": {
+        "method": "POST",
+        "path": "https://api-inference.huggingface.co/async/models/{{params.id}}",
+        "headers": {
+          "Authorization": "Bearer {{settings.token}}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "inputs": "{{params.inputs}}"
+        },
+        "response_template": "Async job submitted: `{{task_id}}`. Poll with `/hf job-status job_id={{task_id}}`."
+      },
+      "get_async_inference_status": {
+        "method": "GET",
+        "path": "https://api-inference.huggingface.co/async/{{params.job_id}}",
+        "headers": {"Authorization": "Bearer {{settings.token}}"},
+        "response_template": "## Async job `{{../params.job_id}}`\n\nStatus: {{status}}\n\n{{#if output}}### Output\n```json\n{{json output}}\n```{{/if}}"
+      },
+      "list_endpoints": {
+        "method": "GET",
+        "path": "https://api.endpoints.huggingface.cloud/v2/endpoint/{{default params.namespace settings.default_namespace}}",
+        "headers": {"Authorization": "Bearer {{settings.token}}"},
+        "response_template": "## Endpoints for `{{../params.namespace}}`\n\n{{#each items}}- **{{name}}** — status: {{status.state}}, model: {{model.repository}}, url: {{status.url}}\n{{/each}}"
+      },
+      "get_endpoint": {
+        "method": "GET",
+        "path": "https://api.endpoints.huggingface.cloud/v2/endpoint/{{default params.namespace settings.default_namespace}}/{{params.name}}",
+        "headers": {"Authorization": "Bearer {{settings.token}}"},
+        "response_template": "## Endpoint `{{name}}`\n\n- Status: {{status.state}}\n- Model: {{model.repository}} ({{model.revision}})\n- URL: {{status.url}}\n- Compute: {{compute.instanceType}} x {{compute.scaling.minReplica}}-{{compute.scaling.maxReplica}}\n- Created: {{createdAt}}"
+      },
+      "create_endpoint": {
+        "method": "POST",
+        "path": "https://api.endpoints.huggingface.cloud/v2/endpoint/{{default params.namespace settings.default_namespace}}",
+        "headers": {
+          "Authorization": "Bearer {{settings.token}}",
+          "Content-Type": "application/json"
+        },
+        "body": "{{{params.body}}}",
+        "response_template": "**Endpoint creation submitted: `{{name}}`** (this incurs charges).\n\n- Status: {{status.state}}\n- Model: {{model.repository}}\n- Compute: {{compute.instanceType}}\n- URL (when ready): {{status.url}}\n\nPoll with `/hf endpoint name={{name}}`."
+      },
+      "update_endpoint": {
+        "method": "PUT",
+        "path": "https://api.endpoints.huggingface.cloud/v2/endpoint/{{default params.namespace settings.default_namespace}}/{{params.name}}",
+        "headers": {
+          "Authorization": "Bearer {{settings.token}}",
+          "Content-Type": "application/json"
+        },
+        "body": "{{{params.patch}}}",
+        "response_template": "**Endpoint `{{name}}` updated** (may incur additional charges).\n\n- Status: {{status.state}}\n- Compute: {{compute.instanceType}} x {{compute.scaling.minReplica}}-{{compute.scaling.maxReplica}}"
+      },
+      "pause_endpoint": {
+        "method": "POST",
+        "path": "https://api.endpoints.huggingface.cloud/v2/endpoint/{{default params.namespace settings.default_namespace}}/{{params.name}}/pause",
+        "headers": {"Authorization": "Bearer {{settings.token}}"},
+        "response_template": "Endpoint `{{../params.name}}` pause requested. Status: {{status.state}}"
+      },
+      "resume_endpoint": {
+        "method": "POST",
+        "path": "https://api.endpoints.huggingface.cloud/v2/endpoint/{{default params.namespace settings.default_namespace}}/{{params.name}}/resume",
+        "headers": {"Authorization": "Bearer {{settings.token}}"},
+        "response_template": "Endpoint `{{../params.name}}` resume requested. Status: {{status.state}}"
+      },
+      "delete_endpoint": {
+        "method": "DELETE",
+        "path": "https://api.endpoints.huggingface.cloud/v2/endpoint/{{default params.namespace settings.default_namespace}}/{{params.name}}",
+        "headers": {"Authorization": "Bearer {{settings.token}}"},
+        "response_template": "Endpoint `{{../params.name}}` deletion submitted."
+      },
+      "endpoint_logs": {
+        "method": "GET",
+        "path": "https://api.endpoints.huggingface.cloud/v2/endpoint/{{default params.namespace settings.default_namespace}}/{{params.name}}/logs",
+        "headers": {"Authorization": "Bearer {{settings.token}}"},
+        "response_template": "## Logs for `{{../params.name}}`\n\n```\n{{this}}\n```"
+      },
+      "list_autotrain_projects": {
+        "method": "GET",
+        "path": "https://api.autotrain.huggingface.co/projects",
+        "headers": {"Authorization": "Bearer {{settings.token}}"},
+        "response_template": "## AutoTrain projects\n\n{{#each this}}- **{{name}}** (id {{id}}) — task: {{task}}, status: {{status}}\n{{/each}}"
+      },
+      "create_autotrain_project": {
+        "method": "POST",
+        "path": "https://api.autotrain.huggingface.co/projects/create",
+        "headers": {
+          "Authorization": "Bearer {{settings.token}}",
+          "Content-Type": "application/json"
+        },
+        "body": "{{{params.body}}}",
+        "response_template": "**AutoTrain project `{{name}}` created** (id {{id}}). Start a run with `/hf autotrain-start project_id={{id}}`."
+      },
+      "get_autotrain_project": {
+        "method": "GET",
+        "path": "https://api.autotrain.huggingface.co/projects/{{params.project_id}}",
+        "headers": {"Authorization": "Bearer {{settings.token}}"},
+        "response_template": "## AutoTrain project `{{name}}` (id {{id}})\n\n- Task: {{task}}\n- Status: {{status}}\n- Created: {{createdAt}}"
+      },
+      "start_autotrain_run": {
+        "method": "POST",
+        "path": "https://api.autotrain.huggingface.co/projects/{{params.project_id}}/start_training",
+        "headers": {
+          "Authorization": "Bearer {{settings.token}}",
+          "Content-Type": "application/json"
+        },
+        "body": "{{{params.body}}}",
+        "response_template": "**AutoTrain run started for project {{../params.project_id}}** (this incurs charges). Job id: {{job_id}}."
+      },
+      "list_autotrain_runs": {
+        "method": "GET",
+        "path": "https://api.autotrain.huggingface.co/projects/{{params.project_id}}/jobs",
+        "headers": {"Authorization": "Bearer {{settings.token}}"},
+        "response_template": "## Runs for project {{../params.project_id}}\n\n{{#each this}}- {{id}} — status: {{status}}, created: {{createdAt}}\n{{/each}}"
+      },
+      "get_autotrain_run": {
+        "method": "GET",
+        "path": "https://api.autotrain.huggingface.co/projects/{{params.project_id}}/jobs/{{params.run_id}}",
+        "headers": {"Authorization": "Bearer {{settings.token}}"},
+        "response_template": "## AutoTrain run `{{id}}`\n\n- Status: {{status}}\n- Started: {{startedAt}}\n- Finished: {{finishedAt}}\n- Metrics: {{json metrics}}"
+      }
+    },
+    "rate_limit": {
+      "requests_per_minute": 100
+    }
+  },
+  "skills": ["skills/huggingface.md"],
+  "connector": {
+    "kind": "huggingface",
+    "category": "ml",
+    "setup_hint": "Run `/hf-tools auth-import` after `huggingface-cli login`, or paste a token from huggingface.co/settings/tokens.",
+    "docs_path": "plugins/zorai-plugin-huggingface/README.md",
+    "read_actions": [
+      "search_models", "search_datasets", "search_spaces",
+      "get_model", "get_dataset", "get_space",
+      "list_endpoints", "get_endpoint", "endpoint_logs",
+      "list_autotrain_projects", "get_autotrain_project",
+      "list_autotrain_runs", "get_autotrain_run",
+      "dataset_info", "dataset_splits", "dataset_size", "dataset_rows",
+      "dataset_search", "dataset_filter", "dataset_statistics", "dataset_is_valid"
+    ],
+    "write_actions": [
+      "run_inference", "submit_async_inference",
+      "create_endpoint", "update_endpoint",
+      "pause_endpoint", "resume_endpoint", "delete_endpoint",
+      "create_autotrain_project", "start_autotrain_run"
+    ],
+    "readiness_endpoint": "check_health"
+  },
+  "commands": {
+    "health": {
+      "description": "Verify HuggingFace token and show identity",
+      "action": "check_health"
+    },
+    "search-models": {
+      "description": "Search HF models",
+      "action": "search_models"
+    },
+    "search-datasets": {
+      "description": "Search HF datasets",
+      "action": "search_datasets"
+    },
+    "search-spaces": {
+      "description": "Search HF spaces",
+      "action": "search_spaces"
+    },
+    "model": {
+      "description": "Fetch HF model details",
+      "action": "get_model"
+    },
+    "dataset": {
+      "description": "Fetch HF dataset details",
+      "action": "get_dataset"
+    },
+    "space": {
+      "description": "Fetch HF space details",
+      "action": "get_space"
+    },
+    "data-info": {"description": "Dataset metadata via datasets-server", "action": "dataset_info"},
+    "data-splits": {"description": "List config/split pairs for a dataset", "action": "dataset_splits"},
+    "data-size": {"description": "Row + byte counts for a dataset", "action": "dataset_size"},
+    "data-rows": {"description": "Fetch rows from a dataset split", "action": "dataset_rows"},
+    "data-search": {"description": "Full-text search a dataset split", "action": "dataset_search"},
+    "data-filter": {"description": "Apply predicates to a dataset split", "action": "dataset_filter"},
+    "data-stats": {"description": "Per-column statistics for a dataset split", "action": "dataset_statistics"},
+    "data-valid": {"description": "Check which datasets-server features work for a dataset", "action": "dataset_is_valid"},
+    "infer": {"description": "Run serverless inference on a model", "action": "run_inference"},
+    "job-submit": {"description": "Submit an async inference job", "action": "submit_async_inference"},
+    "job-status": {"description": "Poll async inference job status", "action": "get_async_inference_status"},
+    "endpoint-list": {"description": "List dedicated endpoints in a namespace", "action": "list_endpoints"},
+    "endpoint": {"description": "Get dedicated endpoint status", "action": "get_endpoint"},
+    "endpoint-create": {"description": "Create a dedicated endpoint (pass full HF endpoint JSON in body param; incurs charges)", "action": "create_endpoint"},
+    "endpoint-update": {"description": "Update a dedicated endpoint (pass partial HF endpoint JSON in patch param; may incur charges)", "action": "update_endpoint"},
+    "endpoint-pause": {"description": "Pause a dedicated endpoint", "action": "pause_endpoint"},
+    "endpoint-resume": {"description": "Resume a paused endpoint", "action": "resume_endpoint"},
+    "endpoint-delete": {"description": "Delete a dedicated endpoint", "action": "delete_endpoint"},
+    "endpoint-logs": {"description": "Tail endpoint logs", "action": "endpoint_logs"},
+    "autotrain-list": {"description": "List AutoTrain projects", "action": "list_autotrain_projects"},
+    "autotrain-create": {"description": "Create an AutoTrain project (pass full AutoTrain project JSON in body param)", "action": "create_autotrain_project"},
+    "autotrain-project": {"description": "Get AutoTrain project details", "action": "get_autotrain_project"},
+    "autotrain-start": {"description": "Start an AutoTrain run (pass training-config JSON in body param; incurs charges)", "action": "start_autotrain_run"},
+    "autotrain-runs": {"description": "List AutoTrain runs for a project", "action": "list_autotrain_runs"},
+    "autotrain-run": {"description": "Get AutoTrain run status", "action": "get_autotrain_run"}
+  }
+}

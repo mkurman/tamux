@@ -603,7 +603,9 @@ impl TuiModel {
             return Some(profile);
         }
 
-        Some(self.svarog_profile())
+        let mut profile = self.svarog_profile();
+        profile.agent_label = agent_name.to_string();
+        Some(profile)
     }
 
     fn svarog_profile(&self) -> ConversationAgentProfile {

@@ -114,12 +114,14 @@ fn render_request_sync(
         }
     }
 
-    let body = if let Some(ref body_map) = endpoint.body {
-        let body_json =
-            serde_json::to_string(body_map).map_err(|e| PluginApiError::TemplateError {
+    let body = if let Some(ref body_value) = endpoint.body {
+        let body_template = match body_value {
+            serde_json::Value::String(raw) => raw.clone(),
+            other => serde_json::to_string(other).map_err(|e| PluginApiError::TemplateError {
                 detail: format!("body serialization: {e}"),
-            })?;
-        let rendered = registry.render_template(&body_json, context).map_err(|e| {
+            })?,
+        };
+        let rendered = registry.render_template(&body_template, context).map_err(|e| {
             PluginApiError::TemplateError {
                 detail: format!("body template: {e}"),
             }
@@ -422,10 +424,7 @@ mod tests {
                 "Authorization".to_string(),
                 "Bearer {{settings.api_key}}".to_string(),
             )])),
-            body: Some(HashMap::from([(
-                "content".to_string(),
-                serde_json::json!("{{params.message}}"),
-            )])),
+            body: Some(serde_json::json!({"content": "{{params.message}}"})),
             response_template: None,
         };
         let ctx = build_context(
@@ -441,7 +440,42 @@ mod tests {
             .headers
             .iter()
             .any(|(k, v)| k == "Authorization" && v == "Bearer tok_abc"));
-        assert!(req.body.is_some());
+        assert_eq!(req.body.as_deref(), Some(r#"{"content":"hello"}"#));
+    }
+
+    #[tokio::test]
+    async fn render_request_renders_raw_string_body_template() {
+        let reg = create_registry();
+        let api = ApiSection {
+            base_url: Some("".to_string()),
+            endpoints: HashMap::new(),
+            rate_limit: None,
+        };
+        let endpoint = EndpointDef {
+            method: "PUT".to_string(),
+            path: "https://api.endpoints.huggingface.cloud/v2/endpoint/{{params.ns}}/{{params.name}}".to_string(),
+            params: None,
+            headers: None,
+            body: Some(serde_json::Value::String("{{{params.patch}}}".to_string())),
+            response_template: None,
+        };
+        let patch_json = r#"{"compute":{"scaling":{"minReplica":2,"maxReplica":4}}}"#;
+        let ctx = build_context(
+            serde_json::json!({"ns": "alice", "name": "ep1", "patch": patch_json}),
+            vec![],
+            None,
+        );
+
+        let req = render_request(&reg, &api, &endpoint, &ctx).await.unwrap();
+        assert_eq!(req.method, "PUT");
+        assert_eq!(
+            req.url,
+            "https://api.endpoints.huggingface.cloud/v2/endpoint/alice/ep1"
+        );
+        // Raw string body: triple-stash substitution lets the agent pass arbitrary JSON
+        // (with numeric fields, nested objects, etc.) without going through the structured
+        // body schema. Critical for HF endpoint update / AutoTrain config patches.
+        assert_eq!(req.body.as_deref(), Some(patch_json));
     }
 
     #[tokio::test]

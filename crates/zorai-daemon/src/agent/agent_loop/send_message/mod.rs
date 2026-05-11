@@ -249,6 +249,26 @@ impl AgentEngine {
             {
                 return active_agent_id;
             }
+
+            let owner_alias = self
+                .threads
+                .read()
+                .await
+                .get(existing_thread_id)
+                .and_then(|thread| thread.agent_name.clone())
+                .map(|name| name.trim().to_string())
+                .filter(|name| !name.is_empty());
+            if let Some(alias) = owner_alias {
+                let sub_agents = self.list_sub_agents().await;
+                let resolved =
+                    crate::agent::agent_identity::resolve_agent_target(&alias, &sub_agents);
+                if resolved.scope_id != MAIN_AGENT_ID
+                    || crate::agent::agent_identity::is_main_agent_scope(&alias)
+                {
+                    return resolved.scope_id;
+                }
+                return alias.to_ascii_lowercase();
+            }
         }
 
         MAIN_AGENT_ID.to_string()

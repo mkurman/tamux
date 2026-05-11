@@ -97,7 +97,7 @@ pub fn plugin_schema_v1() -> serde_json::Value {
                                 "path": { "type": "string" },
                                 "params": { "type": "object" },
                                 "headers": { "type": "object" },
-                                "body": { "type": "object" },
+                                "body": { "type": ["object", "string"] },
                                 "response_template": { "type": "string" }
                             }
                         }

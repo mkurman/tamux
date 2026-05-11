@@ -1311,6 +1311,29 @@ impl AgentEngine {
                         .cloned()
                 },
             );
+            let nonempty = |value: Option<String>| {
+                value
+                    .map(|v| v.trim().to_string())
+                    .filter(|v| !v.is_empty())
+            };
+            let derived_from_messages = detail_result.as_ref().and_then(|result| {
+                result.thread.messages.iter().rev().find_map(|message| {
+                    if !matches!(message.role, MessageRole::Assistant) {
+                        return None;
+                    }
+                    let provider = nonempty(message.provider.clone())?;
+                    let model = nonempty(message.model.clone())?;
+                    Some((provider, model))
+                })
+            });
+            let resolved_provider = execution_profile
+                .as_ref()
+                .and_then(|profile| nonempty(profile.provider.clone()))
+                .or_else(|| derived_from_messages.as_ref().map(|(p, _)| p.clone()));
+            let resolved_model = execution_profile
+                .as_ref()
+                .and_then(|profile| nonempty(profile.model.clone()))
+                .or_else(|| derived_from_messages.as_ref().map(|(_, m)| m.clone()));
             detail.insert(
                 "thread_participants".to_string(),
                 serde_json::to_value(participants).unwrap_or(serde_json::Value::Array(Vec::new())),
@@ -1321,17 +1344,13 @@ impl AgentEngine {
             );
             detail.insert(
                 "profile_provider".to_string(),
-                execution_profile
-                    .as_ref()
-                    .and_then(|profile| profile.provider.clone())
+                resolved_provider
                     .map(serde_json::Value::String)
                     .unwrap_or(serde_json::Value::Null),
             );
             detail.insert(
                 "profile_model".to_string(),
-                execution_profile
-                    .as_ref()
-                    .and_then(|profile| profile.model.clone())
+                resolved_model
                     .map(serde_json::Value::String)
                     .unwrap_or(serde_json::Value::Null),
             );

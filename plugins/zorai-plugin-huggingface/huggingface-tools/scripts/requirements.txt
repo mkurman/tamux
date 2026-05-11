@@ -1,0 +1,4 @@
+duckdb>=1.1
+pyarrow>=17
+requests>=2.32
+huggingface_hub>=0.24

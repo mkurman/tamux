@@ -1,0 +1,17 @@
+{
+  "name": "zorai-plugin-huggingface",
+  "version": "1.0.0",
+  "description": "HuggingFace integration for Zorai — search, fetch, deploy, run jobs, query datasets",
+  "author": "zorai",
+  "license": "MIT",
+  "keywords": ["zorai", "plugin", "huggingface"],
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/anthropic/cmux-next"
+  },
+  "files": [
+    "huggingface/",
+    "huggingface-tools/",
+    "README.md"
+  ]
+}

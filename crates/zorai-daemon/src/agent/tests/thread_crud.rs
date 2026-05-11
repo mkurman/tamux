@@ -2428,3 +2428,50 @@ async fn thread_persistence_round_trips_offload_and_structural_refs() {
         ]
     );
 }
+
+#[tokio::test]
+async fn agent_thread_detail_json_falls_back_to_message_provider_when_execution_profile_missing() {
+    // Why this matters: threads opened from history (or created before the
+    // execution-profile field was persisted) have no entry in
+    // `thread_execution_profiles`. Without a fallback, the TUI would render
+    // the header using the daemon's global config — which can be any other
+    // agent the user happens to have selected in another window. Falling back
+    // to the thread's own assistant-message provider/model keeps the header
+    // anchored to the thread's actual responder.
+    let root = tempdir().expect("temp dir");
+    let manager = SessionManager::new_test(root.path()).await;
+    let engine = AgentEngine::new_test(manager, AgentConfig::default(), root.path()).await;
+    let thread_id = "thread-history-without-execution-profile";
+
+    let mut assistant = assistant_message("hello from a sub-agent", 2);
+    assistant.provider = Some("deepseek".to_string());
+    assistant.model = Some("deepseek-v4-pro".to_string());
+
+    engine.threads.write().await.insert(
+        thread_id.to_string(),
+        make_thread(
+            thread_id,
+            Some("DeepSeekorrr"),
+            "History thread without profile",
+            false,
+            1,
+            2,
+            vec![AgentMessage::user("hi", 1), assistant],
+        ),
+    );
+
+    // Ensure no execution profile is registered for this thread.
+    engine
+        .thread_execution_profiles
+        .write()
+        .await
+        .remove(thread_id);
+
+    let json = engine
+        .agent_thread_detail_json(thread_id, Some(10), Some(0))
+        .await;
+    let value: serde_json::Value = serde_json::from_str(&json).expect("decode thread detail");
+
+    assert_eq!(value["profile_provider"].as_str(), Some("deepseek"));
+    assert_eq!(value["profile_model"].as_str(), Some("deepseek-v4-pro"));
+}

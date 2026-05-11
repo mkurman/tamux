@@ -79,7 +79,7 @@ pub struct EndpointDef {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub headers: Option<HashMap<String, String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub body: Option<HashMap<String, serde_json::Value>>,
+    pub body: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub response_template: Option<String>,
 }
