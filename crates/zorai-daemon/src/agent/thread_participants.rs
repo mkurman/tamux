@@ -1334,6 +1334,25 @@ impl AgentEngine {
                 .as_ref()
                 .and_then(|profile| nonempty(profile.model.clone()))
                 .or_else(|| derived_from_messages.as_ref().map(|(_, m)| m.clone()));
+            let existing_agent_name = detail
+                .get("agent_name")
+                .and_then(|value| value.as_str())
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(ToString::to_string);
+            if existing_agent_name.is_none() {
+                let derived_agent_name = detail_result.as_ref().and_then(|result| {
+                    result.thread.messages.iter().rev().find_map(|message| {
+                        if !matches!(message.role, MessageRole::Assistant) {
+                            return None;
+                        }
+                        nonempty(message.author_agent_name.clone())
+                    })
+                });
+                if let Some(name) = derived_agent_name {
+                    detail.insert("agent_name".to_string(), serde_json::Value::String(name));
+                }
+            }
             detail.insert(
                 "thread_participants".to_string(),
                 serde_json::to_value(participants).unwrap_or(serde_json::Value::Array(Vec::new())),

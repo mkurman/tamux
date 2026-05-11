@@ -2475,3 +2475,177 @@ async fn agent_thread_detail_json_falls_back_to_message_provider_when_execution_
     assert_eq!(value["profile_provider"].as_str(), Some("deepseek"));
     assert_eq!(value["profile_model"].as_str(), Some("deepseek-v4-pro"));
 }
+
+#[tokio::test]
+async fn agent_thread_detail_json_backfills_agent_name_from_message_author_when_missing() {
+    // Why this matters: older threads (or in-memory state that lost the field)
+    // can be persisted without `agent_name`, making the TUI's sticky owner
+    // label fall back to "Swarog". The latest assistant message's
+    // `author_agent_name` is a reliable secondary source of truth — it was
+    // stamped by the daemon at message creation under the actual responder
+    // scope.
+    let root = tempdir().expect("temp dir");
+    let manager = SessionManager::new_test(root.path()).await;
+    let engine = AgentEngine::new_test(manager, AgentConfig::default(), root.path()).await;
+    let thread_id = "thread-history-without-agent-name";
+
+    let mut assistant = assistant_message("answer from a sub-agent", 2);
+    assistant.author_agent_name = Some("DeepSeekorrr".to_string());
+
+    engine.threads.write().await.insert(
+        thread_id.to_string(),
+        make_thread(
+            thread_id,
+            None,
+            "History thread without agent_name",
+            false,
+            1,
+            2,
+            vec![AgentMessage::user("hi", 1), assistant],
+        ),
+    );
+
+    let json = engine
+        .agent_thread_detail_json(thread_id, Some(10), Some(0))
+        .await;
+    let value: serde_json::Value = serde_json::from_str(&json).expect("decode thread detail");
+
+    assert_eq!(value["agent_name"].as_str(), Some("DeepSeekorrr"));
+}
+
+#[tokio::test]
+async fn restore_thread_from_db_preserves_custom_sub_agent_name_instead_of_canonicalizing() {
+    // Why this matters: when a thread is lazily restored from SQLite (e.g.
+    // opened from history), the daemon hydrates `agent_name`. The
+    // `canonical_agent_name` helper only knows the built-in personas and
+    // collapses any unfamiliar id (e.g. a user-defined sub-agent UUID) back to
+    // "Swarog". For custom sub-agents we must prefer the DB row's stored name
+    // (or the responder stack frame) so the TUI's sticky owner label, the
+    // rolling responder, and the [SubAgent] thread-tab placement all stay
+    // consistent. Without this, opening DeepSeekorrr's thread from history
+    // would silently relabel the responder to "Swarog".
+    let root = tempdir().expect("temp dir");
+    let manager = SessionManager::new_test(root.path()).await;
+    let engine = AgentEngine::new_test(manager, AgentConfig::default(), root.path()).await;
+    let thread_id = "thread-restore-preserves-custom-name";
+
+    engine
+        .threads
+        .write()
+        .await
+        .insert(
+            thread_id.to_string(),
+            make_thread(
+                thread_id,
+                Some("DeepSeekorrr"),
+                "Custom sub-agent thread",
+                false,
+                1,
+                2,
+                vec![AgentMessage::user("hi", 1)],
+            ),
+        );
+    engine
+        .set_thread_handoff_state(
+            thread_id,
+            ThreadHandoffState {
+                origin_agent_id: "subagent-1777065727944".to_string(),
+                active_agent_id: "subagent-1777065727944".to_string(),
+                responder_stack: vec![ThreadResponderFrame {
+                    agent_id: "subagent-1777065727944".to_string(),
+                    agent_name: "DeepSeekorrr".to_string(),
+                    entered_at: 1,
+                    entered_via_handoff_event_id: None,
+                    linked_thread_id: None,
+                }],
+                events: Vec::new(),
+                pending_approval_id: None,
+            },
+        )
+        .await;
+    engine.persist_thread_by_id(thread_id).await;
+
+    // Cold-start a fresh engine and force a lazy restore from the DB.
+    let cold = AgentEngine::new_test(
+        SessionManager::new_test(root.path()).await,
+        AgentConfig::default(),
+        root.path(),
+    )
+    .await;
+    cold.threads.write().await.remove(thread_id);
+    let restored = cold
+        .restore_thread_from_db(thread_id)
+        .await
+        .expect("thread should restore from db");
+
+    assert_eq!(
+        restored.agent_name.as_deref(),
+        Some("DeepSeekorrr"),
+        "restored thread must keep the custom sub-agent name, not collapse to Swarog"
+    );
+}
+
+#[tokio::test]
+async fn ensure_thread_messages_loaded_preserves_in_memory_tail_added_after_hydration_marker() {
+    // Why this matters: when the TUI fetches a paged thread detail, the daemon
+    // re-marks the thread for lazy hydration. If the agent loop then completes a
+    // turn and calls persist_thread_by_id, persist first calls
+    // ensure_thread_messages_loaded. Before this guard, that call blindly
+    // overwrote thread.messages with the DB snapshot — wiping the
+    // just-appended assistant message before persistence could write it back.
+    // The result was the user's "latest agent message constantly removed" bug.
+    // The hydration loader must defer to the in-memory tail when it's ahead of
+    // the DB.
+    let root = tempdir().expect("temp dir");
+    let manager = SessionManager::new_test(root.path()).await;
+    let engine = AgentEngine::new_test(manager, AgentConfig::default(), root.path()).await;
+    let thread_id = "thread-pending-hydration-preserves-tail";
+
+    let mut persisted_assistant = assistant_message("persisted assistant", 2);
+    persisted_assistant.id = "msg-persisted-assistant".to_string();
+    engine.threads.write().await.insert(
+        thread_id.to_string(),
+        make_thread(
+            thread_id,
+            Some("DeepSeekorrr"),
+            "Pending hydration thread",
+            false,
+            1,
+            2,
+            vec![AgentMessage::user("user-1", 1), persisted_assistant],
+        ),
+    );
+    engine.persist_thread_by_id(thread_id).await;
+
+    // Simulate the TUI fetching a paged thread detail — `restore_thread_from_db`
+    // (called inside that code path) re-inserts the thread into the lazy
+    // hydration set.
+    engine
+        .thread_message_hydration_pending
+        .write()
+        .await
+        .insert(thread_id.to_string());
+
+    // Now simulate the agent loop appending a fresh assistant message in memory
+    // before the persistence call has the chance to write it through.
+    {
+        let mut threads = engine.threads.write().await;
+        let thread = threads.get_mut(thread_id).expect("thread should exist");
+        let mut new_assistant = assistant_message("new assistant tail", 3);
+        new_assistant.id = "msg-new-assistant".to_string();
+        thread.messages.push(new_assistant);
+        thread.updated_at = 3;
+    }
+
+    // ensure_thread_messages_loaded must not wipe the in-memory tail.
+    assert!(engine.ensure_thread_messages_loaded(thread_id).await);
+
+    let threads = engine.threads.read().await;
+    let thread = threads.get(thread_id).expect("thread retained");
+    assert_eq!(thread.messages.len(), 3, "in-memory tail must survive");
+    assert_eq!(
+        thread.messages.last().map(|m| m.id.as_str()),
+        Some("msg-new-assistant"),
+        "newly appended assistant tail must remain after hydration check"
+    );
+}

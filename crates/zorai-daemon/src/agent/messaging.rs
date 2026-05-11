@@ -69,6 +69,35 @@ fn sum_message_token_totals(messages: &[AgentMessage]) -> (u64, u64) {
         })
 }
 
+// Returns true if the in-memory thread is ahead of the DB hydration payload —
+// i.e., the live state has messages the DB hasn't received yet. Hydrating would
+// wipe out the newer in-memory turn before persistence can write it back.
+// Triggers: more in-memory messages than DB delivered, or a strictly newer
+// timestamp/message id on the in-memory tail. A trailing optimistic message
+// without an id is treated as ahead even when counts match, because the daemon
+// just appended it locally.
+fn thread_in_memory_is_ahead_of_db(thread: &AgentThread, db_messages: &[AgentMessage]) -> bool {
+    if thread.messages.len() > db_messages.len() {
+        return true;
+    }
+    let Some(in_memory_tail) = thread.messages.last() else {
+        return false;
+    };
+    if in_memory_tail.id.is_empty() {
+        return true;
+    }
+    let Some(db_tail) = db_messages.last() else {
+        return true;
+    };
+    if in_memory_tail.timestamp > db_tail.timestamp {
+        return true;
+    }
+    if in_memory_tail.id != db_tail.id {
+        return true;
+    }
+    false
+}
+
 impl AgentEngine {
     pub(super) async fn budget_exceeded_task_for_thread(&self, thread_id: &str) -> Option<String> {
         let budget_exceeded_status = serde_json::to_value(TaskStatus::BudgetExceeded)
@@ -167,9 +196,12 @@ impl AgentEngine {
             let Some(thread) = threads.get_mut(thread_id) else {
                 return false;
             };
-            thread.messages = messages;
-            thread.total_input_tokens = total_input_tokens;
-            thread.total_output_tokens = total_output_tokens;
+            let in_memory_ahead = thread_in_memory_is_ahead_of_db(thread, &messages);
+            if !in_memory_ahead {
+                thread.messages = messages;
+                thread.total_input_tokens = total_input_tokens;
+                thread.total_output_tokens = total_output_tokens;
+            }
             true
         };
         if updated {
@@ -662,6 +694,28 @@ impl AgentEngine {
             &handoff_state,
             has_thread_participants,
         )
+        .or_else(|| {
+            // The DB row's `agent_name` is the most authoritative source for
+            // custom sub-agent threads: the canonical helper only knows the
+            // built-in personas and collapses unknown ids (e.g. user-defined
+            // sub-agent UUIDs) to "Swarog".
+            db_thread
+                .agent_name
+                .as_deref()
+                .map(str::trim)
+                .filter(|name| !name.is_empty())
+                .map(str::to_string)
+        })
+        .or_else(|| {
+            // Fall back to the responder stack's most recent frame name, which
+            // preserves the sub-agent's display name (set at handoff time).
+            handoff_state
+                .responder_stack
+                .last()
+                .map(|frame| frame.agent_name.trim())
+                .filter(|name| !name.is_empty())
+                .map(str::to_string)
+        })
         .unwrap_or_else(|| canonical_agent_name(&handoff_state.active_agent_id).to_string());
 
         let ParsedThreadMetadata {

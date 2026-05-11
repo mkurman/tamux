@@ -347,19 +347,35 @@ impl AgentEngine {
             .map(|thread| thread.created_at)
             .unwrap_or_else(now_millis);
         let normalized = normalized_thread_handoff_state(thread_id, None, created_at, Some(state));
-        let active_name = canonical_agent_name(&normalized.active_agent_id).to_string();
         let has_thread_participants = self
             .thread_participants
             .read()
             .await
             .get(thread_id)
             .is_some_and(|participants| !participants.is_empty());
+        // Prefer the responder stack's frame name over `canonical_agent_name`.
+        // The canonical helper only knows the built-in personas and collapses
+        // any unfamiliar id (e.g. a user-defined sub-agent UUID like
+        // "subagent-<timestamp>") back to "Svarog", which would silently
+        // overwrite a custom sub-agent's display name on every handoff-state
+        // update.
+        let stack_name = normalized
+            .responder_stack
+            .iter()
+            .rev()
+            .find(|frame| frame.agent_id.eq_ignore_ascii_case(&normalized.active_agent_id))
+            .and_then(|frame| {
+                let trimmed = frame.agent_name.trim();
+                (!trimmed.is_empty()).then(|| trimmed.to_string())
+            });
+        let fallback_name =
+            stack_name.unwrap_or_else(|| canonical_agent_name(&normalized.active_agent_id).to_string());
         let thread_agent_name = visible_thread_owner_agent_name_for_handoff_state(
             thread_id,
             &normalized,
             has_thread_participants,
         )
-        .unwrap_or(active_name);
+        .unwrap_or(fallback_name);
         self.thread_handoff_states
             .write()
             .await
