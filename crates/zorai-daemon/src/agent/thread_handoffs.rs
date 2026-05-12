@@ -205,7 +205,20 @@ pub(super) fn visible_thread_owner_agent_name_for_handoff_state(
         return None;
     }
 
-    Some(canonical_agent_name(&state.origin_agent_id).to_string())
+    // Prefer the responder stack frame name for the origin agent so custom
+    // sub-agent display names (e.g. "DeepSeekorrr") survive. `canonical_agent_name`
+    // only knows built-in personas and collapses unfamiliar ids (sub-agent UUIDs)
+    // back to "Svarog", which would silently overwrite the sub-agent owner name
+    // whenever a participant joins the thread.
+    let origin_name = state
+        .responder_stack
+        .iter()
+        .find(|frame| frame.agent_id.eq_ignore_ascii_case(&state.origin_agent_id))
+        .map(|frame| frame.agent_name.trim())
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| canonical_agent_name(&state.origin_agent_id).to_string());
+    Some(origin_name)
 }
 
 pub(super) fn persisted_agent_name_for_thread_surface(

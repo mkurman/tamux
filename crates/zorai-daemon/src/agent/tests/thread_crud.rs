@@ -2586,6 +2586,88 @@ async fn restore_thread_from_db_preserves_custom_sub_agent_name_instead_of_canon
 }
 
 #[tokio::test]
+async fn restore_thread_from_db_preserves_custom_sub_agent_name_when_participants_present() {
+    // Why this matters: once a user adds a participant (e.g. @Mokosh) to a
+    // sub-agent-owned thread, the `has_thread_participants` branch of
+    // `visible_thread_owner_agent_name_for_handoff_state` activates. Before this
+    // guard, that branch went straight to `canonical_agent_name(origin_agent_id)`,
+    // which collapses unfamiliar sub-agent UUIDs back to "Swarog" — silently
+    // relabelling the thread's responder the moment the participant joined.
+    // The owner-name lookup must walk the responder stack first so the
+    // sub-agent's display name survives across the participant lifecycle.
+    let root = tempdir().expect("temp dir");
+    let manager = SessionManager::new_test(root.path()).await;
+    let engine = AgentEngine::new_test(manager, AgentConfig::default(), root.path()).await;
+    let thread_id = "thread-participant-preserves-owner-name";
+
+    engine.threads.write().await.insert(
+        thread_id.to_string(),
+        make_thread(
+            thread_id,
+            Some("DeepSeekorrr"),
+            "Sub-agent thread with participant",
+            false,
+            1,
+            2,
+            vec![AgentMessage::user("hi", 1)],
+        ),
+    );
+    engine.thread_participants.write().await.insert(
+        thread_id.to_string(),
+        vec![ThreadParticipantState {
+            agent_id: "mokosh".to_string(),
+            agent_name: "Mokosh".to_string(),
+            instruction: "observe and chime in".to_string(),
+            status: ThreadParticipantStatus::Active,
+            created_at: 1,
+            updated_at: 1,
+            deactivated_at: None,
+            last_contribution_at: None,
+            last_observed_visible_message_at: None,
+            always_auto_response: false,
+        }],
+    );
+    engine
+        .set_thread_handoff_state(
+            thread_id,
+            ThreadHandoffState {
+                origin_agent_id: "subagent-1777065727944".to_string(),
+                active_agent_id: "subagent-1777065727944".to_string(),
+                responder_stack: vec![ThreadResponderFrame {
+                    agent_id: "subagent-1777065727944".to_string(),
+                    agent_name: "DeepSeekorrr".to_string(),
+                    entered_at: 1,
+                    entered_via_handoff_event_id: None,
+                    linked_thread_id: None,
+                }],
+                events: Vec::new(),
+                pending_approval_id: None,
+            },
+        )
+        .await;
+    engine.persist_thread_by_id(thread_id).await;
+
+    let cold = AgentEngine::new_test(
+        SessionManager::new_test(root.path()).await,
+        AgentConfig::default(),
+        root.path(),
+    )
+    .await;
+    cold.threads.write().await.remove(thread_id);
+    let restored = cold
+        .restore_thread_from_db(thread_id)
+        .await
+        .expect("thread should restore from db");
+
+    assert_eq!(
+        restored.agent_name.as_deref(),
+        Some("DeepSeekorrr"),
+        "owner-name lookup must walk the responder stack when participants are present, \
+         not collapse the sub-agent id to Swarog"
+    );
+}
+
+#[tokio::test]
 async fn ensure_thread_messages_loaded_preserves_in_memory_tail_added_after_hydration_marker() {
     // Why this matters: when the TUI fetches a paged thread detail, the daemon
     // re-marks the thread for lazy hydration. If the agent loop then completes a

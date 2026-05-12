@@ -51,9 +51,17 @@ pub(super) fn looks_like_promise_message(message: &str) -> bool {
 }
 
 pub(super) fn classify_stalled_turn(evidence: &TurnEvidence) -> Option<StalledTurnClass> {
-    if follow_through_observed(evidence)
-        || !looks_like_promise_message(&evidence.last_assistant_message)
-    {
+    if follow_through_observed(evidence) {
+        return None;
+    }
+
+    if evidence.last_assistant_message.trim().is_empty() {
+        return evidence
+            .preceded_by_tool_result
+            .then_some(StalledTurnClass::PostToolResultNoFollowThrough);
+    }
+
+    if !looks_like_promise_message(&evidence.last_assistant_message) {
         return None;
     }
 

@@ -308,10 +308,7 @@ fn latest_stalled_turn_observation(
     }
 
     let last_message = thread.messages.last()?;
-    if last_message.role != MessageRole::Assistant
-        || last_message.tool_calls.is_some()
-        || last_message.content.trim().is_empty()
-    {
+    if last_message.role != MessageRole::Assistant || last_message.tool_calls.is_some() {
         return None;
     }
 
@@ -323,6 +320,10 @@ fn latest_stalled_turn_observation(
         .find(|message| !matches!(message.role, MessageRole::System))
         .map(|message| message.role == MessageRole::Tool)
         .unwrap_or(false);
+
+    if last_message.content.trim().is_empty() && !preceded_by_tool_result {
+        return None;
+    }
 
     let evidence = TurnEvidence {
         last_assistant_message: last_message.content.clone(),

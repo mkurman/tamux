@@ -1889,6 +1889,281 @@ async fn collect_stalled_turn_observations_treats_reasoning_only_assistant_turn_
 }
 
 #[tokio::test]
+async fn collect_stalled_turn_observations_detects_primary_thread_empty_after_tool_result() {
+    let engine = build_test_engine("Acknowledged.").await;
+    let now = super::now_millis();
+    let thread_id = "thread-primary-empty-after-tool-result";
+
+    let mut tool_message = AgentMessage::user("Created file /tmp/output.md.", now.saturating_sub(60_000));
+    tool_message.id = "tool-result-1".to_string();
+    tool_message.role = MessageRole::Tool;
+    tool_message.tool_call_id = Some("call-1".to_string());
+    tool_message.tool_name = Some("write_file".to_string());
+
+    let assistant_with_tool_call = AgentMessage {
+        id: "assistant-tool-call".to_string(),
+        role: MessageRole::Assistant,
+        content: String::new(),
+        content_blocks: Vec::new(),
+        tool_calls: Some(vec![ToolCall {
+            id: "call-1".to_string(),
+            function: ToolFunction {
+                name: "write_file".to_string(),
+                arguments: "{}".to_string(),
+            },
+            weles_review: None,
+        }]),
+        tool_call_id: None,
+        tool_name: None,
+        tool_arguments: None,
+        tool_status: None,
+        weles_review: None,
+        input_tokens: 0,
+        output_tokens: 0,
+        cost: None,
+        provider: None,
+        model: None,
+        api_transport: None,
+        response_id: None,
+        upstream_message: None,
+        provider_final_result: None,
+        author_agent_id: None,
+        author_agent_name: None,
+        reasoning: None,
+        message_kind: crate::agent::types::AgentMessageKind::Normal,
+        compaction_strategy: None,
+        compaction_payload: None,
+        offloaded_payload_id: None,
+        tool_output_preview_path: None,
+        structural_refs: Vec::new(),
+        pinned_for_compaction: false,
+        timestamp: now.saturating_sub(120_000),
+    };
+
+    let empty_assistant_after_tool_result = AgentMessage {
+        id: "assistant-empty-after-tool".to_string(),
+        role: MessageRole::Assistant,
+        content: String::new(),
+        content_blocks: Vec::new(),
+        tool_calls: None,
+        tool_call_id: None,
+        tool_name: None,
+        tool_arguments: None,
+        tool_status: None,
+        weles_review: None,
+        input_tokens: 0,
+        output_tokens: 0,
+        cost: None,
+        provider: None,
+        model: None,
+        api_transport: None,
+        response_id: None,
+        upstream_message: None,
+        provider_final_result: None,
+        author_agent_id: None,
+        author_agent_name: None,
+        reasoning: Some("brief".to_string()),
+        message_kind: crate::agent::types::AgentMessageKind::Normal,
+        compaction_strategy: None,
+        compaction_payload: None,
+        offloaded_payload_id: None,
+        tool_output_preview_path: None,
+        structural_refs: Vec::new(),
+        pinned_for_compaction: false,
+        timestamp: now.saturating_sub(360_000),
+    };
+
+    {
+        let mut threads = engine.threads.write().await;
+        threads.insert(
+            thread_id.to_string(),
+            AgentThread {
+                id: thread_id.to_string(),
+                agent_name: Some("DeepSeekorrr".to_string()),
+                title: "Primary chat with empty turn after tool result".to_string(),
+                messages: vec![
+                    AgentMessage::user("Continue the project.", now.saturating_sub(180_000)),
+                    assistant_with_tool_call,
+                    tool_message,
+                    empty_assistant_after_tool_result,
+                ],
+                pinned: false,
+                upstream_thread_id: None,
+                upstream_transport: None,
+                upstream_provider: None,
+                upstream_model: None,
+                upstream_assistant_id: None,
+                total_input_tokens: 0,
+                total_output_tokens: 0,
+                created_at: now.saturating_sub(180_000),
+                updated_at: now.saturating_sub(360_000),
+            },
+        );
+    }
+
+    let observations = engine.collect_stalled_turn_observations().await;
+    assert_eq!(
+        observations.len(),
+        1,
+        "primary thread that ends with empty assistant content after a tool result must be detected as stalled"
+    );
+    assert_eq!(
+        observations[0].class,
+        StalledTurnClass::PostToolResultNoFollowThrough
+    );
+    assert_eq!(observations[0].thread_id, thread_id);
+}
+
+#[tokio::test]
+async fn collect_stalled_turn_observations_detects_subagent_stuck_on_empty_first_turn() {
+    let engine = build_test_engine("Acknowledged.").await;
+    let now = super::now_millis();
+    let thread_id = "thread-subagent-empty-first-turn";
+    let task_id = "task-subagent-empty-first-turn";
+    let started_ago_ms: u64 = 900_000;
+    let empty_message_ago_ms: u64 = 360_000;
+
+    {
+        let mut threads = engine.threads.write().await;
+        threads.insert(
+            thread_id.to_string(),
+            AgentThread {
+                id: thread_id.to_string(),
+                agent_name: Some("Dazhbog".to_string()),
+                title: "Spawned worker".to_string(),
+                messages: vec![
+                    AgentMessage::user(
+                        "Check the issue.",
+                        now.saturating_sub(started_ago_ms),
+                    ),
+                    AgentMessage {
+                        id: "assistant-empty-first-turn".to_string(),
+                        role: MessageRole::Assistant,
+                        content: String::new(),
+                        content_blocks: Vec::new(),
+                        tool_calls: None,
+                        tool_call_id: None,
+                        tool_name: None,
+                        tool_arguments: None,
+                        tool_status: None,
+                        weles_review: None,
+                        input_tokens: 0,
+                        output_tokens: 0,
+                        cost: None,
+                        provider: None,
+                        model: None,
+                        api_transport: None,
+                        response_id: None,
+                        upstream_message: None,
+                        provider_final_result: None,
+                        author_agent_id: None,
+                        author_agent_name: None,
+                        reasoning: Some("final reasoning".to_string()),
+                        message_kind: crate::agent::types::AgentMessageKind::Normal,
+                        compaction_strategy: None,
+                        compaction_payload: None,
+                        offloaded_payload_id: None,
+                        tool_output_preview_path: None,
+                        structural_refs: Vec::new(),
+                        pinned_for_compaction: false,
+                        timestamp: now.saturating_sub(empty_message_ago_ms),
+                    },
+                ],
+                pinned: false,
+                upstream_thread_id: None,
+                upstream_transport: None,
+                upstream_provider: None,
+                upstream_model: None,
+                upstream_assistant_id: None,
+                total_input_tokens: 0,
+                total_output_tokens: 0,
+                created_at: now.saturating_sub(started_ago_ms),
+                updated_at: now.saturating_sub(empty_message_ago_ms),
+            },
+        );
+    }
+
+    let task = AgentTask {
+        id: task_id.to_string(),
+        title: "Spawned worker".to_string(),
+        description: "Stalled on first turn with empty/reasoning-only assistant message".to_string(),
+        status: TaskStatus::InProgress,
+        priority: TaskPriority::Normal,
+        progress: 0,
+        created_at: now.saturating_sub(started_ago_ms),
+        started_at: Some(now.saturating_sub(started_ago_ms)),
+        completed_at: None,
+        error: None,
+        result: None,
+        thread_id: Some(thread_id.to_string()),
+        source: "subagent".to_string(),
+        notify_on_complete: false,
+        notify_channels: Vec::new(),
+        dependencies: Vec::new(),
+        command: None,
+        session_id: None,
+        goal_run_id: None,
+        goal_run_title: None,
+        goal_step_id: None,
+        goal_step_title: None,
+        parent_task_id: Some("task-parent".to_string()),
+        parent_thread_id: Some("thread-parent".to_string()),
+        runtime: "daemon".to_string(),
+        retry_count: 0,
+        max_retries: 0,
+        next_retry_at: None,
+        scheduled_at: None,
+        blocked_reason: None,
+        awaiting_approval_id: None,
+        policy_fingerprint: None,
+        approval_expires_at: None,
+        containment_scope: None,
+        compensation_status: None,
+        compensation_summary: None,
+        lane_id: None,
+        last_error: None,
+        logs: Vec::new(),
+        tool_whitelist: None,
+        tool_blacklist: None,
+        override_provider: None,
+        override_model: None,
+        override_system_prompt: None,
+        context_budget_tokens: None,
+        context_overflow_action: None,
+        termination_conditions: None,
+        success_criteria: None,
+        max_duration_secs: None,
+        supervisor_config: None,
+        sub_agent_def_id: None,
+    };
+    {
+        let mut tasks = engine.tasks.lock().await;
+        tasks.push_back(task.clone());
+    }
+    engine.ensure_subagent_runtime(&task, Some(thread_id)).await;
+    {
+        let mut runtime = engine.subagent_runtime.write().await;
+        let stats = runtime
+            .get_mut(task_id)
+            .expect("subagent runtime should exist after initialization");
+        stats.started_at = now.saturating_sub(started_ago_ms);
+        stats.updated_at = now.saturating_sub(empty_message_ago_ms);
+        stats.last_tool_call_at = None;
+        stats.last_progress_at = None;
+    }
+
+    let observations = engine.collect_stalled_turn_observations().await;
+    assert_eq!(
+        observations.len(),
+        1,
+        "subagent stalled on first turn with empty/reasoning-only message for {}s must be detected as NoProgress",
+        empty_message_ago_ms / 1000,
+    );
+    assert_eq!(observations[0].class, StalledTurnClass::NoProgress);
+    assert_eq!(observations[0].task_id.as_deref(), Some(task_id));
+}
+
+#[tokio::test]
 async fn collect_stalled_turn_observations_detects_recent_subagent_no_progress_without_runtime() {
     let engine = build_test_engine("Acknowledged.").await;
     let now = super::now_millis();
@@ -2291,4 +2566,163 @@ async fn supervise_stalled_turns_recovers_recent_subagent_no_progress_without_ru
                 .content
                 .contains("Recovered missing runtime child thread.")
     }));
+}
+
+#[tokio::test]
+async fn supervise_stalled_turns_recovers_subagent_stuck_on_empty_first_turn() {
+    let engine = build_test_engine("Recovered stalled empty-turn child.").await;
+    let now = super::now_millis();
+    let thread_id = "thread-subagent-empty-first-turn-recovery";
+    let task_id = "task-subagent-empty-first-turn-recovery";
+    let started_ago_ms: u64 = 900_000;
+    let empty_message_ago_ms: u64 = 360_000;
+
+    {
+        let mut threads = engine.threads.write().await;
+        threads.insert(
+            thread_id.to_string(),
+            AgentThread {
+                id: thread_id.to_string(),
+                agent_name: Some("Dazhbog".to_string()),
+                title: "Spawned worker".to_string(),
+                messages: vec![
+                    AgentMessage::user(
+                        "Investigate the regression and report back.",
+                        now.saturating_sub(started_ago_ms),
+                    ),
+                    AgentMessage {
+                        id: "assistant-empty-first-turn-recovery".to_string(),
+                        role: MessageRole::Assistant,
+                        content: String::new(),
+                        content_blocks: Vec::new(),
+                        tool_calls: None,
+                        tool_call_id: None,
+                        tool_name: None,
+                        tool_arguments: None,
+                        tool_status: None,
+                        weles_review: None,
+                        input_tokens: 0,
+                        output_tokens: 0,
+                        cost: None,
+                        provider: None,
+                        model: None,
+                        api_transport: None,
+                        response_id: None,
+                        upstream_message: None,
+                        provider_final_result: None,
+                        author_agent_id: None,
+                        author_agent_name: None,
+                        reasoning: Some("final reasoning".to_string()),
+                        message_kind: crate::agent::types::AgentMessageKind::Normal,
+                        compaction_strategy: None,
+                        compaction_payload: None,
+                        offloaded_payload_id: None,
+                        tool_output_preview_path: None,
+                        structural_refs: Vec::new(),
+                        pinned_for_compaction: false,
+                        timestamp: now.saturating_sub(empty_message_ago_ms),
+                    },
+                ],
+                pinned: false,
+                upstream_thread_id: None,
+                upstream_transport: None,
+                upstream_provider: None,
+                upstream_model: None,
+                upstream_assistant_id: None,
+                total_input_tokens: 0,
+                total_output_tokens: 0,
+                created_at: now.saturating_sub(started_ago_ms),
+                updated_at: now.saturating_sub(empty_message_ago_ms),
+            },
+        );
+    }
+    engine.persist_thread_by_id(thread_id).await;
+
+    let task = AgentTask {
+        id: task_id.to_string(),
+        title: "Spawned worker".to_string(),
+        description: "Stalled on first turn with empty/reasoning-only assistant message".to_string(),
+        status: TaskStatus::InProgress,
+        priority: TaskPriority::Normal,
+        progress: 0,
+        created_at: now.saturating_sub(started_ago_ms),
+        started_at: Some(now.saturating_sub(started_ago_ms)),
+        completed_at: None,
+        error: None,
+        result: None,
+        thread_id: Some(thread_id.to_string()),
+        source: "subagent".to_string(),
+        notify_on_complete: false,
+        notify_channels: Vec::new(),
+        dependencies: Vec::new(),
+        command: None,
+        session_id: None,
+        goal_run_id: None,
+        goal_run_title: None,
+        goal_step_id: None,
+        goal_step_title: None,
+        parent_task_id: Some("task-parent".to_string()),
+        parent_thread_id: Some("thread-parent".to_string()),
+        runtime: "daemon".to_string(),
+        retry_count: 0,
+        max_retries: 0,
+        next_retry_at: None,
+        scheduled_at: None,
+        blocked_reason: None,
+        awaiting_approval_id: None,
+        policy_fingerprint: None,
+        approval_expires_at: None,
+        containment_scope: None,
+        compensation_status: None,
+        compensation_summary: None,
+        lane_id: None,
+        last_error: None,
+        logs: Vec::new(),
+        tool_whitelist: None,
+        tool_blacklist: None,
+        override_provider: None,
+        override_model: None,
+        override_system_prompt: None,
+        context_budget_tokens: None,
+        context_overflow_action: None,
+        termination_conditions: None,
+        success_criteria: None,
+        max_duration_secs: None,
+        supervisor_config: None,
+        sub_agent_def_id: None,
+    };
+    {
+        let mut tasks = engine.tasks.lock().await;
+        tasks.push_back(task.clone());
+    }
+    engine.ensure_subagent_runtime(&task, Some(thread_id)).await;
+    {
+        let mut runtime = engine.subagent_runtime.write().await;
+        let stats = runtime
+            .get_mut(task_id)
+            .expect("subagent runtime should exist after initialization");
+        stats.started_at = now.saturating_sub(started_ago_ms);
+        stats.updated_at = now.saturating_sub(empty_message_ago_ms);
+        stats.last_tool_call_at = None;
+        stats.last_progress_at = None;
+    }
+
+    engine
+        .supervise_stalled_turns()
+        .await
+        .expect("stalled-turn supervision should recover empty-first-turn subagent thread");
+
+    let threads = engine.threads.read().await;
+    let thread = threads
+        .get(thread_id)
+        .expect("subagent thread should remain present");
+    assert!(
+        thread.messages.iter().any(|message| {
+            message.role == MessageRole::System
+                && message
+                    .content
+                    .contains("WELES stalled-turn recovery")
+        }),
+        "WELES recovery system message must be appended to the stalled subagent thread"
+    );
 }

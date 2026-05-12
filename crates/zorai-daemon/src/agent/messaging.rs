@@ -752,31 +752,35 @@ impl AgentEngine {
             }
         };
         let identity_fut = async {
-            let mut guard = self.thread_identity_metadata.write().await;
-            match meta_identity {
-                Some(identity) => {
-                    guard.insert(thread_id_owned.clone(), identity);
-                }
-                None => {
-                    guard.remove(thread_id);
-                }
+            if let Some(identity) = meta_identity {
+                self.thread_identity_metadata
+                    .write()
+                    .await
+                    .insert(thread_id_owned.clone(), identity);
             }
+            // Skip the DB-None branch: a stale persist may have captured an
+            // empty row before the latest in-memory write, and `remove` on
+            // an absent key is a no-op anyway.
         };
         let execution_profile_fut = async {
-            let mut guard = self.thread_execution_profiles.write().await;
-            match meta_execution_profile {
-                Some(profile) => {
-                    guard.insert(thread_id_owned.clone(), profile);
-                }
-                None => {
-                    guard.remove(thread_id);
-                }
+            if let Some(profile) = meta_execution_profile {
+                self.thread_execution_profiles
+                    .write()
+                    .await
+                    .insert(thread_id_owned.clone(), profile);
             }
         };
         let participants_fut = async {
             let mut guard = self.thread_participants.write().await;
             if meta_thread_participants.is_empty() {
-                guard.remove(thread_id);
+                // Don't downgrade non-empty in-memory state with an empty DB
+                // snapshot: a concurrent agent-loop persist may have committed
+                // a snapshot it captured before the latest upsert wrote, so
+                // the DB row briefly lacks the participant even though the
+                // engine's map is the authoritative live state.
+                if !guard.get(thread_id).is_some_and(|entry| !entry.is_empty()) {
+                    guard.remove(thread_id);
+                }
             } else {
                 guard.insert(thread_id_owned.clone(), meta_thread_participants);
             }
@@ -784,38 +788,43 @@ impl AgentEngine {
         let participant_suggestions_fut = async {
             let mut guard = self.thread_participant_suggestions.write().await;
             if meta_thread_participant_suggestions.is_empty() {
-                guard.remove(thread_id);
+                if !guard.get(thread_id).is_some_and(|entry| !entry.is_empty()) {
+                    guard.remove(thread_id);
+                }
             } else {
                 guard.insert(thread_id_owned.clone(), meta_thread_participant_suggestions);
             }
         };
         let skill_discovery_fut = async {
-            let mut guard = self.thread_skill_discovery_states.write().await;
-            match meta_skill_discovery {
-                Some(state) => {
-                    guard.insert(thread_id_owned.clone(), state);
-                }
-                None => {
-                    guard.remove(thread_id);
-                }
+            if let Some(state) = meta_skill_discovery {
+                self.thread_skill_discovery_states
+                    .write()
+                    .await
+                    .insert(thread_id_owned.clone(), state);
             }
         };
         let memory_injection_fut = async {
-            let mut guard = self.thread_memory_injection_state_map().write().await;
-            match meta_memory_injection {
-                Some(state) => {
-                    guard.insert(thread_id_owned.clone(), state);
-                }
-                None => {
-                    guard.remove(thread_id);
-                }
+            if let Some(state) = meta_memory_injection {
+                self.thread_memory_injection_state_map()
+                    .write()
+                    .await
+                    .insert(thread_id_owned.clone(), state);
             }
         };
         let handoff_fut = async {
-            self.thread_handoff_states
-                .write()
-                .await
-                .insert(thread_id_owned.clone(), handoff_state.clone());
+            // Don't downgrade a live handoff state with a stale DB snapshot.
+            // Handoff events and the responder stack are append-only during a
+            // thread's lifetime, so a strictly longer log or stack in memory
+            // means a write happened after the snapshot we're about to insert
+            // was captured — keep the live state.
+            let mut guard = self.thread_handoff_states.write().await;
+            let in_memory_is_fresher = guard.get(thread_id).is_some_and(|existing| {
+                existing.events.len() > handoff_state.events.len()
+                    || existing.responder_stack.len() > handoff_state.responder_stack.len()
+            });
+            if !in_memory_is_fresher {
+                guard.insert(thread_id_owned.clone(), handoff_state.clone());
+            }
         };
         let pending_fut = async {
             let mut pending = self.thread_message_hydration_pending.write().await;

@@ -13,6 +13,9 @@ env:
   ZORAI_GATEWAY_LOG: error
   RUST_LOG: error
 
+permissions:
+  contents: read
+
 jobs:
   # ================================================================
   # Linux x64 — Rust cross-compile + Electron packaging
@@ -21,15 +24,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@v1
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # @v1 (no semver releases)
         with:
           toolchain: ${{ env.RUST_VERSION }}
 
       - name: Setup protoc
-        uses: arduino/setup-protoc@v3
+        uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
         with:
           version: "26.x"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -48,7 +51,7 @@ jobs:
           done
 
       - name: Build frontend
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -109,7 +112,7 @@ jobs:
           sha256sum "$ZIP" > "SHA256SUMS-linux-x86_64.txt"
 
       - name: Upload Linux artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: linux-x64
           path: |
@@ -126,16 +129,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@v1
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # @v1 (no semver releases)
         with:
           toolchain: ${{ env.RUST_VERSION }}
           targets: aarch64-unknown-linux-gnu
 
       - name: Setup protoc
-        uses: arduino/setup-protoc@v3
+        uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
         with:
           version: "26.x"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -154,7 +157,7 @@ jobs:
           done
 
       - name: Build frontend
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -213,7 +216,7 @@ jobs:
           sha256sum "$ZIP" > "SHA256SUMS-linux-aarch64.txt"
 
       - name: Upload Linux arm64 artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: linux-arm64
           path: |
@@ -229,15 +232,15 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@v1
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # @v1 (no semver releases)
         with:
           toolchain: ${{ env.RUST_VERSION }}
 
       - name: Setup protoc
-        uses: arduino/setup-protoc@v3
+        uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
         with:
           version: "26.x"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -255,7 +258,7 @@ jobs:
           }
 
       - name: Build frontend
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -313,7 +316,7 @@ jobs:
           "$hash  $zip" | Out-File -FilePath SHA256SUMS-windows-x64.txt -Encoding ascii
 
       - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: windows-x64
           path: |
@@ -329,16 +332,16 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@v1
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # @v1 (no semver releases)
         with:
           toolchain: ${{ env.RUST_VERSION }}
           targets: aarch64-pc-windows-msvc
 
       - name: Setup protoc
-        uses: arduino/setup-protoc@v3
+        uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
         with:
           version: "26.x"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -356,7 +359,7 @@ jobs:
           }
 
       - name: Build frontend
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -414,7 +417,7 @@ jobs:
           "$hash  $zip" | Out-File -FilePath SHA256SUMS-windows-arm64.txt -Encoding ascii
 
       - name: Upload Windows arm64 artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: windows-arm64
           path: |
@@ -430,16 +433,16 @@ jobs:
     runs-on: macos-15-intel
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@v1
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # @v1 (no semver releases)
         with:
           toolchain: ${{ env.RUST_VERSION }}
           targets: x86_64-apple-darwin
 
       - name: Setup protoc
-        uses: arduino/setup-protoc@v3
+        uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
         with:
           version: "26.x"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -455,7 +458,7 @@ jobs:
           done
 
       - name: Build frontend
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -536,7 +539,7 @@ jobs:
           shasum -a 256 "$ZIP" > "SHA256SUMS-darwin-x86_64.txt"
 
       - name: Upload macOS Intel artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: darwin-x64
           path: |
@@ -553,16 +556,16 @@ jobs:
     runs-on: macos-14
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@v1
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # @v1 (no semver releases)
         with:
           toolchain: ${{ env.RUST_VERSION }}
           targets: aarch64-apple-darwin
 
       - name: Setup protoc
-        uses: arduino/setup-protoc@v3
+        uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
         with:
           version: "26.x"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -578,7 +581,7 @@ jobs:
           done
 
       - name: Build frontend
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -659,7 +662,7 @@ jobs:
           shasum -a 256 "$ZIP" > "SHA256SUMS-darwin-arm64.txt"
 
       - name: Upload macOS ARM64 artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: darwin-arm64
           path: |
@@ -677,10 +680,12 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: artifacts
           pattern: '*'
@@ -703,8 +708,18 @@ jobs:
             cat "$f" >> SHA256SUMS.txt
           done
 
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        with:
+          subject-path: |
+            artifacts/**/*.zip
+            artifacts/**/*.AppImage
+            artifacts/**/*.deb
+            artifacts/**/*.dmg
+            SHA256SUMS.txt
+
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
@@ -728,10 +743,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Setup Node.js for npm publish
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
@@ -752,5 +767,5 @@ jobs:
         working-directory: npm-package
 
       - name: Publish to npm
-        run: npm publish
+        run: npm publish --provenance
         working-directory: npm-package
