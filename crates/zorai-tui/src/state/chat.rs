@@ -233,6 +233,20 @@ fn merge_thread_window(
 }
 
 fn message_snapshot_matches(existing: &AgentMessage, incoming: &AgentMessage) -> bool {
+    if let (Some(existing_qid), Some(incoming_qid)) = (
+        existing
+            .operator_question_id
+            .as_deref()
+            .filter(|value| !value.is_empty()),
+        incoming
+            .operator_question_id
+            .as_deref()
+            .filter(|value| !value.is_empty()),
+    ) {
+        if existing_qid == incoming_qid {
+            return true;
+        }
+    }
     match (existing.id.as_deref(), incoming.id.as_deref()) {
         (Some(existing_id), Some(incoming_id)) => existing_id == incoming_id,
         _ => {
@@ -249,6 +263,20 @@ fn message_snapshot_matches(existing: &AgentMessage, incoming: &AgentMessage) ->
                     || incoming.id.is_none())
         }
     }
+}
+
+fn dedupe_operator_question_messages(messages: &mut Vec<AgentMessage>) -> usize {
+    let before = messages.len();
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    messages.retain(|message| match message
+        .operator_question_id
+        .as_deref()
+        .filter(|value| !value.is_empty())
+    {
+        Some(id) => seen.insert(id.to_string()),
+        None => true,
+    });
+    before - messages.len()
 }
 
 fn content_blocks_match(left: &[AgentContentBlock], right: &[AgentContentBlock]) -> bool {
@@ -484,6 +512,19 @@ fn append_message_to_thread(thread: &mut AgentThread, message: AgentMessage, pag
                 *existing = merge_message_pair(Some(existing), Some(&message));
                 normalize_thread_window(thread);
             }
+            return;
+        }
+    }
+    if let Some(question_id) = message
+        .operator_question_id
+        .as_deref()
+        .filter(|value| !value.is_empty())
+    {
+        if thread
+            .messages
+            .iter()
+            .any(|existing| existing.operator_question_id.as_deref() == Some(question_id))
+        {
             return;
         }
     }
@@ -1770,6 +1811,7 @@ impl ChatState {
                         merge_thread_window(existing, &incoming)
                     };
                     existing.messages = merged;
+                    let dedup_removed = dedupe_operator_question_messages(&mut existing.messages);
                     existing.total_message_count = if metadata_only_detail {
                         incoming
                             .total_message_count
@@ -1782,7 +1824,11 @@ impl ChatState {
                             .max(existing.total_message_count)
                     };
                     existing.loaded_message_start = merged_start;
-                    existing.loaded_message_end = merged_end;
+                    existing.loaded_message_end = merged_end.saturating_sub(dedup_removed);
+                    existing.total_message_count = existing
+                        .total_message_count
+                        .saturating_sub(dedup_removed)
+                        .max(existing.loaded_message_end);
                     if !older_history_page && !stale_context_window {
                         if incoming.active_context_window_tokens.is_some() {
                             existing.active_context_window_start =

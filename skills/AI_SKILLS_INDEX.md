@@ -245,3 +245,128 @@ If permissive-but-not-MIT licenses are acceptable, the practical skill set can b
 
 - New skills added in this pass were written with **agentskills.io-compatible YAML frontmatter** and explicit semantic `tags: [...]` intended to improve skill discovery.
 - Several older pre-existing skills in the repo still use broader or noisier tags; they may benefit from a later normalization pass.
+
+
+## Data Lattice — Dataset Curation Framework
+
+Complete reference for the Data Lattice dataset curation guidelines and skills. Every guideline contains working Python code, measurable quality gates, and cross-references.
+
+### Meta / Entry Points
+
+| Guideline | Best for | Path |
+|-----------|----------|------|
+| `training-data-design-principles` | 8 universal principles — always start here | `guidelines/training-data-design-principles.md` |
+| `dataset-curation-manifest` | Full index of all guidelines and skills | `guidelines/dataset-curation-manifest.md` |
+| `dataset-release-checklist` | Aggregated launch checklist with sign-offs | `guidelines/dataset-release-checklist.md` |
+
+### Core Curation Skills (11)
+
+| Skill | Best for | Path |
+|-------|----------|------|
+| `dataset-cleaning` | Missing values, dedup, outlier handling, normalization | `skills/data-lattice/dataset-cleaning/` |
+| `dataset-splitting` | Train/val/test, stratified, group, time-series splits | `skills/data-lattice/dataset-splitting/` |
+| `dataset-versioning` | DVC, manifest.json, semantic versioning, checksums | `skills/data-lattice/dataset-versioning/` |
+| `hf-datasets` | HuggingFace streaming, map/filter, push_to_hub | `skills/data-lattice/hf-datasets/` |
+| `embedding-analysis` | Semantic dedup (SemDedup, LSHBloom), GRAPE perplexity, DataRater, JS/Wasserstein | `skills/data-lattice/embedding-analysis/` |
+| `llm-assisted-curation` | vLLM/SGLang judge, batch rewrite, synthetic generation | `skills/data-lattice/llm-assisted-curation/` |
+| `data-card-writer` | Structured datasheets (Gebru et al. format) | `skills/data-lattice/data-card-writer/` |
+| `label-quality-audit` | Confident learning noise detection, per-class error rates | `skills/data-lattice/label-quality-audit/` |
+| `bias-audit` | Demographic parity, representation gaps, outcome disparity | `skills/data-lattice/bias-audit/` |
+| `benchmark-contamination-scan` | N-gram + embedding overlap scan against 60+ benchmarks | `skills/data-lattice/benchmark-contamination-scan/` |
+| `data-diff` | Structured diff between dataset versions | `skills/data-lattice/data-diff/` |
+
+### ML Training Data Guidelines
+
+| Guideline | Covers |
+|-----------|--------|
+| `llm-training-data-task` | Pre-training mixing ratios, CPT, SFT instruction quality |
+| `rl-alignment-data-task` | RLHF/DPO/GRPO preference pairs, reward model data |
+| `cv-dataset-task` | Image QA, annotation QC, augmentation strategy |
+| `specialized-modality-data-task` | Embeddings, NER, audio TTS/STT |
+| `specialized-training-data-task` | Contrastive, KD, continual, federated, anomaly |
+| `rag-retrieval-data-task` | Query-document pairs, hard negatives, chunk strategies |
+| `synthetic-data-generation-task` | LLM/diffusion/SDV, realism checks, hallucination audit |
+| `agentic-training-data-task` | Trajectory QC, reward extraction, environment diversity |
+| `time-series-data-task` | Stationarity, seasonality, walk-forward validation |
+| `graph-data-task` | Node/edge dedup, degree distribution, edge-level splits |
+| `curriculum-learning-data-task` | Difficulty scoring, anti-curriculum, prerequisites |
+| `multitask-transfer-data-task` | Task interference, negative transfer, fine-tuning stability |
+| `fewshot-retrieval-data-task` | Few-shot episodes, prompt sensitivity, retrieval quality |
+| `meta-learning-data-task` | Task distribution, support/query splits, negative results |
+| `architecture-specific-data-task` | Transformer, CNN, sparse attention, memory networks |
+
+### Medical / Biological Guidelines
+
+| Guideline | Covers |
+|-----------|--------|
+| `medical-bio-data-task` | HIPAA/GDPR/IRB, batch effects, reference genomes |
+| `genomics-sequencing-data-task` | FASTQ QC, alignment, VCF variant QC |
+| `single-cell-data-task` | Adaptive QC, ambient RNA, doublet detection, integration |
+| `immunology-data-task` | TCR/BCR clonotypes, flow cytometry, cytokines |
+| `clinical-drug-discovery-data-task` | Compound standardization, HTS, ADMET, clinical trials |
+| `proteomics-metabolomics-data-task` | 3-level FDR, PTM localization, metabolomics QC |
+| `epigenomics-data-task` | ChIP-seq, ATAC-seq, methylation, Hi-C |
+| `pathology-data-task` | WSI integrity, stain normalization, annotation QC |
+| `clinical-longitudinal-data-task` | Lab harmonization, survival censoring, EHR phenotypes |
+
+### Evaluation & Validation
+
+| Guideline | Covers |
+|-----------|--------|
+| `data-contamination-task` | 9 types: benchmark, temporal, group, label, cross-dataset, synthetic, canary, model-based, multimodal |
+| `evaluation-dataset-design-task` | 4-level pyramid, per-class metrics, calibration, MDE |
+| `cross-validation-strategy-task` | 8-strategy matrix, compatibility checker, nested CV |
+| `robustness-engineering-task` | 3-tier stress tests, envelope mapping, failure genealogy |
+| `intersectional-evaluation-task` | Multi-axis fairness, compound effects, mitigation audit |
+| `reproducibility-science-task` | Exact reproduction capture, environment influence |
+
+### Operations & Governance
+
+| Guideline | Covers |
+|-----------|--------|
+| `annotation-management-task` | Team structure, IAA targets, active learning |
+| `annotation-economics-task` | Fatigue modeling, task matching, cost-quality curves |
+| `data-pipeline-monitoring-task` | Schema drift, distribution drift, backfill protocols |
+| `multilingual-data-task` | Language coverage, tokenizer fertility, translation quality |
+| `cultural-linguistic-data-task` | Cultural context, language-specific bias, concept alignment |
+| `data-visualization-task` | 6-stage visualization protocol |
+| `dataset-governance-task` | Licensing, GDPR, EU AI Act, DPAs |
+| `data-lifecycle-governance-task` | Birth→Adolescence→Adulthood→Retirement→Death |
+| `cost-model-task` | Build vs buy vs license, ROI framework |
+| `data-strategy-foundation-models-task` | $100M data plan, mixing ratios, scaling laws |
+| `privacy-preserving-data-task` | DP-SGD, k-anonymity, membership inference |
+| `production-deployment-data-task` | A/B tests, canary validation, rollback triggers |
+| `team-operations-data-task` | Skill matching, handoff gates, review efficiency |
+
+### Advanced / Frontier
+
+| Guideline | Covers |
+|-----------|--------|
+| `data-attribution-task` | TRAK, influence functions, datamodels |
+| `data-mixture-optimization-task` | DoReMi, DoGE, auto-curricula |
+| `data-feedback-loop-task` | Self-training drift, confidence decay, optimal stopping |
+| `mechanistic-interpretability-data-task` | SAE data, circuit discovery, activation patching |
+| `sim-to-real-bridge-task` | Multi-axis gap, domain randomization, failure detection |
+| `data-model-coevolution-task` | Capability inheritance, cross-gen contamination |
+| `data-archaeology-task` | Schema reconstruction, corruption recovery, legacy bias |
+| `adversarial-data-design-task` | Targeted failures, universal patterns, red-teaming |
+| `model-editing-energy-data-task` | Behavior editing, carbon estimation, energy efficiency |
+| `embodied-compositional-data-task` | Robot trajectories, physics, recursive composition |
+| `data-portfolio-theory-task` | Marginal value, diversification, data asset valuation |
+| `scaling-law-data-task` | Calibration, compute-optimal selection, anomaly detection |
+| `knowledge-engineering-data-task` | Expert knowledge capture, conflict resolution |
+| `data-compression-learning-task` | Redundancy taxonomy, lossy tolerance, decompression |
+| `data-economics-task` | Marginal value curves, portfolio diversification, market valuation |
+| `industry-verticals-data-task` | Security, finance, supply chain, energy, insurance |
+| `data-lattice-ecosystem-task` | Certification, academic integration, vertical packs, training |
+| `dataset-certification-task` | Bronze/Silver/Gold/Platinum automated certification |
+
+### Source Catalogs
+
+| Catalog | Covers |
+|---------|--------|
+| `medical-dataset-sources-task` | 70+ datasets: EHR, imaging, genomics, single-cell, drug |
+| `protein-dataset-sources-task` | PDB, AlphaFold DB, ESM Atlas, STRING, PDBbind |
+| `chemistry-materials-sources-task` | COD, Materials Project, QM9, OC20 |
+| `neuroscience-sources-task` | Neuropixels, Allen, HCP, MICrONS, FlyWire |
+| `satellite-geospatial-sources-task` | Sentinel, Landsat, SpaceNet, BigEarthNet |

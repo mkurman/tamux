@@ -78,7 +78,7 @@ Minimal example:
 ```json
 {
   "name": "zorai-plugin-example",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "zoraiPlugin": {
     "entry": "dist/zorai-plugin.js",
     "format": "script"
@@ -105,7 +105,7 @@ import ExamplePanel from "./ExamplePanel";
 export const examplePlugin: Plugin = {
   id: "example",
   name: "Example Plugin",
-  version: "0.9.2",
+  version: "0.9.3",
   components: {
     ExamplePanel,
   },
